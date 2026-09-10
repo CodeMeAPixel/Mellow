@@ -1,10 +1,10 @@
 {
   "$schema": "https://schema.railpack.com",
-  "buildAptPackages": ["ca-certificates", "tzdata"],
+  "buildAptPackages": ["ca-certificates", "tzdata", "git"],
   "steps": {
     "build": {
       "commands": [
-        "go build -trimpath -ldflags=-X=main.version=${RAILPACK_GIT_SHA:-dev} -o bin/mellow ./cmd/mellow"
+        "go build -trimpath -ldflags=-X=main.version=$(git describe --tags --always --dirty 2>/dev/null || echo dev) -o bin/mellow ./cmd/mellow"
       ]
     }
   },

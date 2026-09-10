@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -26,6 +27,37 @@ import (
 
 var version = "dev"
 
+func resolveVersion() string {
+	if version != "" && version != "dev" {
+		return version
+	}
+	if v := os.Getenv("VERSION"); v != "" {
+		return v
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		var rev string
+		var dirty bool
+		for _, s := range info.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				rev = s.Value
+			case "vcs.modified":
+				dirty = s.Value == "true"
+			}
+		}
+		if rev != "" {
+			if len(rev) > 12 {
+				rev = rev[:12]
+			}
+			if dirty {
+				rev += "-dirty"
+			}
+			return rev
+		}
+	}
+	return "dev"
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -35,11 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Setup(cfg.LogLevel)
-	if version == "" || version == "dev" {
-		if v := os.Getenv("VERSION"); v != "" {
-			version = v
-		}
-	}
+	version = resolveVersion()
 	discord.SetVersion(version)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
