@@ -4,7 +4,7 @@
   "steps": {
     "build": {
       "commands": [
-        "go build -trimpath -ldflags \"-s -w -X main.version=${RAILPACK_GIT_SHA:-dev}\" -o bin/mellow ./cmd/mellow"
+        "go build -trimpath -ldflags=-X=main.version=${RAILPACK_GIT_SHA:-dev} -o bin/mellow ./cmd/mellow"
       ]
     }
   },
