@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"regexp"
 	"runtime/debug"
 	"syscall"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/CodeMeAPixel/Mellow/internal/crypto"
 	"github.com/CodeMeAPixel/Mellow/internal/db"
 	"github.com/CodeMeAPixel/Mellow/internal/discord"
+	"github.com/CodeMeAPixel/Mellow/internal/github"
 	"github.com/CodeMeAPixel/Mellow/internal/logger"
 	"github.com/CodeMeAPixel/Mellow/internal/omniplex"
 	"github.com/CodeMeAPixel/Mellow/internal/server"
@@ -27,33 +29,58 @@ import (
 
 var version = "dev"
 
-func resolveVersion() string {
-	if version != "" && version != "dev" {
+var bareRev = regexp.MustCompile(`^[0-9a-f]{7,40}(-dirty)?$`)
+
+func vcsRevision() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	var rev string
+	var dirty bool
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			rev = s.Value
+		case "vcs.modified":
+			dirty = s.Value == "true"
+		}
+	}
+	if rev == "" {
+		return ""
+	}
+	if len(rev) > 12 {
+		rev = rev[:12]
+	}
+	if dirty {
+		rev += "-dirty"
+	}
+	return rev
+}
+
+func resolveVersion(ctx context.Context, cfg *config.Config) string {
+	if version != "" && version != "dev" && !bareRev.MatchString(version) {
 		return version
 	}
 	if v := os.Getenv("VERSION"); v != "" {
 		return v
 	}
-	if info, ok := debug.ReadBuildInfo(); ok {
-		var rev string
-		var dirty bool
-		for _, s := range info.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				rev = s.Value
-			case "vcs.modified":
-				dirty = s.Value == "true"
-			}
-		}
-		if rev != "" {
-			if len(rev) > 12 {
-				rev = rev[:12]
-			}
-			if dirty {
-				rev += "-dirty"
-			}
-			return rev
-		}
+
+	tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	gh := github.New(cfg.GitHubRepo, cfg.GitHubToken)
+	if rel, err := gh.LatestRelease(tctx); err == nil && rel.TagName != "" {
+		return rel.TagName
+	}
+	if tag, err := gh.LatestTag(tctx); err == nil && tag != "" {
+		return tag
+	}
+
+	if version != "" && version != "dev" {
+		return version
+	}
+	if rev := vcsRevision(); rev != "" {
+		return rev
 	}
 	return "dev"
 }
@@ -67,7 +94,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Setup(cfg.LogLevel)
-	version = resolveVersion()
+	version = resolveVersion(context.Background(), cfg)
 	discord.SetVersion(version)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

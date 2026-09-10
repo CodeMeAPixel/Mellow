@@ -47,6 +47,11 @@ func (s *Service) Run(ctx context.Context) {
 		slog.Info("status poster disabled (no MELLOW_STATUS_API_KEY)")
 		return
 	}
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(30 * time.Second):
+	}
 	s.post(ctx)
 	t := time.NewTicker(s.every)
 	defer t.Stop()

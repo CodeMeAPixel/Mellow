@@ -71,3 +71,16 @@ func (c *Client) LatestRelease(ctx context.Context) (Release, error) {
 	err := c.get(ctx, "/releases/latest", &r)
 	return r, err
 }
+
+func (c *Client) LatestTag(ctx context.Context) (string, error) {
+	var tags []struct {
+		Name string `json:"name"`
+	}
+	if err := c.get(ctx, "/tags?per_page=1", &tags); err != nil {
+		return "", err
+	}
+	if len(tags) == 0 {
+		return "", nil
+	}
+	return tags[0].Name, nil
+}
