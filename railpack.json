@@ -1,6 +1,5 @@
 {
   "$schema": "https://schema.railpack.com",
-  "provider": "go",
   "buildAptPackages": ["ca-certificates", "tzdata"],
   "steps": {
     "build": {
