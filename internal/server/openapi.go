@@ -55,6 +55,47 @@ const openAPISpec = `{
         }
       }
     },
+    "/v1/status": {
+      "get": {
+        "summary": "Live bot and shard status",
+        "tags": ["Stats"],
+        "responses": {
+          "200": {
+            "description": "Current status, including per-shard detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "version": { "type": "string" },
+                    "startedAt": { "type": "string" },
+                    "uptimeSeconds": { "type": "integer" },
+                    "shardCount": { "type": "integer" },
+                    "guilds": { "type": "integer" },
+                    "generatedAt": { "type": "string" },
+                    "shards": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "integer" },
+                          "state": { "type": "string" },
+                          "latencyMs": { "type": "integer" },
+                          "guilds": { "type": "integer" },
+                          "lastReady": { "type": "string" },
+                          "resumes": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/testimonials": {
       "get": {
         "summary": "Public testimonials",

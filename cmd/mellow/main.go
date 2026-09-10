@@ -104,7 +104,7 @@ func main() {
 		b.OmniplexCommands,
 	).Run(ctx)
 
-	srv := server.New(cfg.Port, cfg.APIToken, store, aiClient)
+	srv := server.New(cfg.Port, cfg.APIToken, store, aiClient, func() any { return b.StatusReport() })
 	go func() {
 		slog.Info("http api listening", slog.Int("port", cfg.Port))
 		if err := srv.Start(); err != nil {

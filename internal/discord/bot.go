@@ -45,20 +45,29 @@ type Bot struct {
 	games   map[string]*wordGame
 
 	readyShards sync.Map
+
+	shardMu   sync.Mutex
+	shardMeta map[int]*shardInfo
+}
+
+type shardInfo struct {
+	lastReady time.Time
+	resumes   int
 }
 
 func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Logger) (*Bot, error) {
 	b := &Bot{
-		cfg:      cfg,
-		store:    store,
-		ai:       aiClient,
-		syslog:   sl,
-		omni:     omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID),
-		gh:       github.New(cfg.GitHubRepo, cfg.GitHubToken),
-		commands: map[string]*Command{},
-		cooldns:  map[string]time.Time{},
-		games:    map[string]*wordGame{},
-		startAt:  time.Now(),
+		cfg:       cfg,
+		store:     store,
+		ai:        aiClient,
+		syslog:    sl,
+		omni:      omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID),
+		gh:        github.New(cfg.GitHubRepo, cfg.GitHubToken),
+		commands:  map[string]*Command{},
+		cooldns:   map[string]time.Time{},
+		games:     map[string]*wordGame{},
+		shardMeta: map[int]*shardInfo{},
+		startAt:   time.Now(),
 	}
 	for _, c := range b.buildRegistry() {
 		b.commands[c.Name] = c
@@ -212,6 +221,8 @@ func (b *Bot) onReady(e *events.Ready) {
 		setBrand(br)
 	}
 
+	b.markShard(shardID, func(m *shardInfo) { m.lastReady = time.Now() })
+
 	ctx := context.Background()
 	if _, seen := b.readyShards.LoadOrStore(shardID, true); seen {
 		b.syslog.Shard(ctx, shardID, "reconnected", "A fresh session was established after a disconnect.", "warning")
@@ -222,7 +233,19 @@ func (b *Bot) onReady(e *events.Ready) {
 
 func (b *Bot) onResumed(e *events.Resumed) {
 	slog.Info("gateway resumed", slog.Int("shard", e.ShardID()))
+	b.markShard(e.ShardID(), func(m *shardInfo) { m.resumes++ })
 	b.syslog.Shard(context.Background(), e.ShardID(), "resumed", "The existing session was resumed after a brief drop.", "info")
+}
+
+func (b *Bot) markShard(id int, fn func(*shardInfo)) {
+	b.shardMu.Lock()
+	defer b.shardMu.Unlock()
+	m := b.shardMeta[id]
+	if m == nil {
+		m = &shardInfo{}
+		b.shardMeta[id] = m
+	}
+	fn(m)
 }
 
 func (b *Bot) onGuildsReady(e *events.GuildsReady) {

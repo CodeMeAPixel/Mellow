@@ -15,14 +15,15 @@ import (
 )
 
 type Server struct {
-	http  *http.Server
-	store *db.Store
-	ai    *ai.Client
-	token string
+	http     *http.Server
+	store    *db.Store
+	ai       *ai.Client
+	token    string
+	statusFn func() any
 }
 
-func New(port int, token string, store *db.Store, aiClient *ai.Client) *Server {
-	s := &Server{store: store, ai: aiClient, token: token}
+func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn func() any) *Server {
+	s := &Server{store: store, ai: aiClient, token: token, statusFn: statusFn}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
@@ -35,6 +36,7 @@ func New(port int, token string, store *db.Store, aiClient *ai.Client) *Server {
 	r.Get("/docs", s.handleDocs)
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/stats", s.handleStats)
+		r.Get("/status", s.handleStatus)
 		r.Get("/testimonials", s.handleTestimonials)
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireToken)
@@ -78,6 +80,14 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	if s.statusFn == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "status unavailable"})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.statusFn())
 }
 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
