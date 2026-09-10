@@ -37,7 +37,7 @@ func New(url, key, version string, shards, guilds, users func() int) *Service {
 		shards:  shards,
 		guilds:  guilds,
 		users:   users,
-		client:  &http.Client{Timeout: 10 * time.Second},
+		client:  &http.Client{Timeout: 20 * time.Second},
 		every:   5 * time.Minute,
 	}
 }

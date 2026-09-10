@@ -10,13 +10,15 @@ import (
 )
 
 type ShardStatus struct {
-	ID        int    `json:"id"`
-	State     string `json:"state"`
-	LatencyMs int64  `json:"latencyMs"`
-	Guilds    int    `json:"guilds"`
-	Users     int    `json:"users"`
-	LastReady string `json:"lastReady,omitempty"`
-	Resumes   int    `json:"resumes"`
+	ID             int    `json:"id"`
+	State          string `json:"state"`
+	LatencyMs      int64  `json:"latencyMs"`
+	Guilds         int    `json:"guilds"`
+	Users          int    `json:"users"`
+	LastReady      string `json:"lastReady,omitempty"`
+	LastDisconnect string `json:"lastDisconnect,omitempty"`
+	Resumes        int    `json:"resumes"`
+	Disconnects    int    `json:"disconnects"`
 }
 
 type StatusReport struct {
@@ -98,7 +100,11 @@ func (b *Bot) StatusReport() StatusReport {
 			if !m.lastReady.IsZero() {
 				s.LastReady = m.lastReady.UTC().Format(time.RFC3339)
 			}
+			if !m.lastDisconnect.IsZero() {
+				s.LastDisconnect = m.lastDisconnect.UTC().Format(time.RFC3339)
+			}
 			s.Resumes = m.resumes
+			s.Disconnects = m.disconnects
 		}
 		b.shardMu.Unlock()
 		if gw.Status() != gateway.StatusReady {

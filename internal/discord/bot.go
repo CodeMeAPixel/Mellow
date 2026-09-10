@@ -51,8 +51,10 @@ type Bot struct {
 }
 
 type shardInfo struct {
-	lastReady time.Time
-	resumes   int
+	lastReady      time.Time
+	lastDisconnect time.Time
+	resumes        int
+	disconnects    int
 }
 
 func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Logger) (*Bot, error) {
@@ -284,6 +286,10 @@ func (b *Bot) onShardClose(gw gateway.Gateway, err error, reconnect bool) {
 	if reconnect {
 		sev = "warning"
 	}
+	b.markShard(gw.ShardID(), func(m *shardInfo) {
+		m.disconnects++
+		m.lastDisconnect = time.Now()
+	})
 	slog.Warn("shard closed", slog.Int("shard", gw.ShardID()), slog.String("err", msg), slog.Bool("reconnect", reconnect))
 	b.syslog.Shard(context.Background(), gw.ShardID(), "disconnected", msg, sev)
 }
