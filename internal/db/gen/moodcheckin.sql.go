@@ -1,0 +1,159 @@
+package gen
+
+import (
+	"context"
+	"time"
+)
+
+const countMoodCheckIns = `-- name: CountMoodCheckIns :one
+SELECT COUNT(*) FROM "MoodCheckIn"
+`
+
+func (q *Queries) CountMoodCheckIns(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countMoodCheckIns)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createMoodCheckIn = `-- name: CreateMoodCheckIn :one
+INSERT INTO "MoodCheckIn" ("userId", "mood", "intensity", "activity", "note", "nextCheckIn")
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt"
+`
+
+type CreateMoodCheckInParams struct {
+	UserId      int64      `json:"userId"`
+	Mood        string     `json:"mood"`
+	Intensity   *int32     `json:"intensity"`
+	Activity    *string    `json:"activity"`
+	Note        *string    `json:"note"`
+	NextCheckIn *time.Time `json:"nextCheckIn"`
+}
+
+func (q *Queries) CreateMoodCheckIn(ctx context.Context, arg CreateMoodCheckInParams) (MoodCheckIn, error) {
+	row := q.db.QueryRow(ctx, createMoodCheckIn,
+		arg.UserId,
+		arg.Mood,
+		arg.Intensity,
+		arg.Activity,
+		arg.Note,
+		arg.NextCheckIn,
+	)
+	var i MoodCheckIn
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Mood,
+		&i.Intensity,
+		&i.Activity,
+		&i.Note,
+		&i.NextCheckIn,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const lastMoodCheckIn = `-- name: LastMoodCheckIn :one
+SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt" FROM "MoodCheckIn"
+WHERE "userId" = $1
+ORDER BY "createdAt" DESC
+LIMIT 1
+`
+
+func (q *Queries) LastMoodCheckIn(ctx context.Context, userid int64) (MoodCheckIn, error) {
+	row := q.db.QueryRow(ctx, lastMoodCheckIn, userid)
+	var i MoodCheckIn
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Mood,
+		&i.Intensity,
+		&i.Activity,
+		&i.Note,
+		&i.NextCheckIn,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const moodCheckInsSince = `-- name: MoodCheckInsSince :many
+SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt" FROM "MoodCheckIn"
+WHERE "userId" = $1 AND "createdAt" >= $2
+ORDER BY "createdAt" ASC
+`
+
+type MoodCheckInsSinceParams struct {
+	UserId    int64     `json:"userId"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (q *Queries) MoodCheckInsSince(ctx context.Context, arg MoodCheckInsSinceParams) ([]MoodCheckIn, error) {
+	rows, err := q.db.Query(ctx, moodCheckInsSince, arg.UserId, arg.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MoodCheckIn
+	for rows.Next() {
+		var i MoodCheckIn
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Mood,
+			&i.Intensity,
+			&i.Activity,
+			&i.Note,
+			&i.NextCheckIn,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const recentMoodCheckIns = `-- name: RecentMoodCheckIns :many
+SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt" FROM "MoodCheckIn"
+WHERE "userId" = $1
+ORDER BY "createdAt" DESC
+LIMIT $2
+`
+
+type RecentMoodCheckInsParams struct {
+	UserId int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+}
+
+func (q *Queries) RecentMoodCheckIns(ctx context.Context, arg RecentMoodCheckInsParams) ([]MoodCheckIn, error) {
+	rows, err := q.db.Query(ctx, recentMoodCheckIns, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MoodCheckIn
+	for rows.Next() {
+		var i MoodCheckIn
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Mood,
+			&i.Intensity,
+			&i.Activity,
+			&i.Note,
+			&i.NextCheckIn,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

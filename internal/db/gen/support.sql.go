@@ -1,0 +1,303 @@
+package gen
+
+import (
+	"context"
+)
+
+const createFeedbackReply = `-- name: CreateFeedbackReply :one
+INSERT INTO "FeedbackReply" ("feedbackId", "staffId", "message")
+VALUES ($1, $2, $3)
+RETURNING id, "feedbackId", "staffId", message, "createdAt"
+`
+
+type CreateFeedbackReplyParams struct {
+	FeedbackId int32  `json:"feedbackId"`
+	StaffId    *int64 `json:"staffId"`
+	Message    string `json:"message"`
+}
+
+func (q *Queries) CreateFeedbackReply(ctx context.Context, arg CreateFeedbackReplyParams) (FeedbackReply, error) {
+	row := q.db.QueryRow(ctx, createFeedbackReply, arg.FeedbackId, arg.StaffId, arg.Message)
+	var i FeedbackReply
+	err := row.Scan(
+		&i.ID,
+		&i.FeedbackId,
+		&i.StaffId,
+		&i.Message,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createReportReply = `-- name: CreateReportReply :one
+INSERT INTO "ReportReply" ("reportId", "staffId", "message")
+VALUES ($1, $2, $3)
+RETURNING id, "reportId", "staffId", message, "createdAt"
+`
+
+type CreateReportReplyParams struct {
+	ReportId int32  `json:"reportId"`
+	StaffId  *int64 `json:"staffId"`
+	Message  string `json:"message"`
+}
+
+func (q *Queries) CreateReportReply(ctx context.Context, arg CreateReportReplyParams) (ReportReply, error) {
+	row := q.db.QueryRow(ctx, createReportReply, arg.ReportId, arg.StaffId, arg.Message)
+	var i ReportReply
+	err := row.Scan(
+		&i.ID,
+		&i.ReportId,
+		&i.StaffId,
+		&i.Message,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteFeedback = `-- name: DeleteFeedback :execrows
+DELETE FROM "Feedback" WHERE "id" = $1
+`
+
+func (q *Queries) DeleteFeedback(ctx context.Context, id int32) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteFeedback, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const feedbackReplies = `-- name: FeedbackReplies :many
+SELECT id, "feedbackId", "staffId", message, "createdAt" FROM "FeedbackReply"
+WHERE "feedbackId" = $1
+ORDER BY "createdAt" ASC
+`
+
+func (q *Queries) FeedbackReplies(ctx context.Context, feedbackid int32) ([]FeedbackReply, error) {
+	rows, err := q.db.Query(ctx, feedbackReplies, feedbackid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FeedbackReply
+	for rows.Next() {
+		var i FeedbackReply
+		if err := rows.Scan(
+			&i.ID,
+			&i.FeedbackId,
+			&i.StaffId,
+			&i.Message,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFeedback = `-- name: GetFeedback :one
+SELECT id, "userId", message, "createdAt", featured, approved, public FROM "Feedback" WHERE "id" = $1
+`
+
+func (q *Queries) GetFeedback(ctx context.Context, id int32) (Feedback, error) {
+	row := q.db.QueryRow(ctx, getFeedback, id)
+	var i Feedback
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Message,
+		&i.CreatedAt,
+		&i.Featured,
+		&i.Approved,
+		&i.Public,
+	)
+	return i, err
+}
+
+const getReport = `-- name: GetReport :one
+SELECT id, "userId", message, "createdAt", status FROM "Report" WHERE "id" = $1
+`
+
+func (q *Queries) GetReport(ctx context.Context, id int32) (Report, error) {
+	row := q.db.QueryRow(ctx, getReport, id)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Message,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
+const listFeedback = `-- name: ListFeedback :many
+SELECT id, "userId", message, "createdAt", featured, approved, public FROM "Feedback"
+WHERE ($2::bool IS NULL OR "approved" = $2)
+ORDER BY "createdAt" DESC
+LIMIT $1
+`
+
+type ListFeedbackParams struct {
+	Limit    int32 `json:"limit"`
+	Approved *bool `json:"approved"`
+}
+
+func (q *Queries) ListFeedback(ctx context.Context, arg ListFeedbackParams) ([]Feedback, error) {
+	rows, err := q.db.Query(ctx, listFeedback, arg.Limit, arg.Approved)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Feedback
+	for rows.Next() {
+		var i Feedback
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Message,
+			&i.CreatedAt,
+			&i.Featured,
+			&i.Approved,
+			&i.Public,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReports = `-- name: ListReports :many
+SELECT id, "userId", message, "createdAt", status FROM "Report"
+WHERE ($2::text IS NULL OR "status" = $2)
+ORDER BY "createdAt" DESC
+LIMIT $1
+`
+
+type ListReportsParams struct {
+	Limit  int32   `json:"limit"`
+	Status *string `json:"status"`
+}
+
+func (q *Queries) ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error) {
+	rows, err := q.db.Query(ctx, listReports, arg.Limit, arg.Status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Report
+	for rows.Next() {
+		var i Report
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Message,
+			&i.CreatedAt,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const reportReplies = `-- name: ReportReplies :many
+SELECT id, "reportId", "staffId", message, "createdAt" FROM "ReportReply"
+WHERE "reportId" = $1
+ORDER BY "createdAt" ASC
+`
+
+func (q *Queries) ReportReplies(ctx context.Context, reportid int32) ([]ReportReply, error) {
+	rows, err := q.db.Query(ctx, reportReplies, reportid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReportReply
+	for rows.Next() {
+		var i ReportReply
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReportId,
+			&i.StaffId,
+			&i.Message,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setFeedbackApproval = `-- name: SetFeedbackApproval :one
+UPDATE "Feedback" SET
+    "approved" = COALESCE($2, "approved"),
+    "public"   = COALESCE($3, "public"),
+    "featured" = COALESCE($4, "featured")
+WHERE "id" = $1
+RETURNING id, "userId", message, "createdAt", featured, approved, public
+`
+
+type SetFeedbackApprovalParams struct {
+	ID       int32 `json:"id"`
+	Approved *bool `json:"approved"`
+	Public   *bool `json:"public"`
+	Featured *bool `json:"featured"`
+}
+
+func (q *Queries) SetFeedbackApproval(ctx context.Context, arg SetFeedbackApprovalParams) (Feedback, error) {
+	row := q.db.QueryRow(ctx, setFeedbackApproval,
+		arg.ID,
+		arg.Approved,
+		arg.Public,
+		arg.Featured,
+	)
+	var i Feedback
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Message,
+		&i.CreatedAt,
+		&i.Featured,
+		&i.Approved,
+		&i.Public,
+	)
+	return i, err
+}
+
+const setReportStatus = `-- name: SetReportStatus :one
+UPDATE "Report" SET "status" = $2 WHERE "id" = $1 RETURNING id, "userId", message, "createdAt", status
+`
+
+type SetReportStatusParams struct {
+	ID     int32  `json:"id"`
+	Status string `json:"status"`
+}
+
+func (q *Queries) SetReportStatus(ctx context.Context, arg SetReportStatusParams) (Report, error) {
+	row := q.db.QueryRow(ctx, setReportStatus, arg.ID, arg.Status)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Message,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}

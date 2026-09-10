@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "go",
+  "buildAptPackages": ["ca-certificates", "tzdata"],
+  "steps": {
+    "build": {
+      "commands": [
+        "go build -trimpath -ldflags \"-s -w -X main.version=${RAILPACK_GIT_SHA:-dev}\" -o bin/mellow ./cmd/mellow"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "./bin/mellow"
+  }
+}

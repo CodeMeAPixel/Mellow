@@ -1,0 +1,101 @@
+package gen
+
+import (
+	"context"
+)
+
+const countCrisisEvents = `-- name: CountCrisisEvents :one
+SELECT COUNT(*) FROM "CrisisEvent"
+`
+
+func (q *Queries) CountCrisisEvents(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCrisisEvents)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countCrisisEventsForUser = `-- name: CountCrisisEventsForUser :one
+SELECT COUNT(*) FROM "CrisisEvent" WHERE "userId" = $1
+`
+
+func (q *Queries) CountCrisisEventsForUser(ctx context.Context, userid int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countCrisisEventsForUser, userid)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countEscalatedCrisisEventsForUser = `-- name: CountEscalatedCrisisEventsForUser :one
+SELECT COUNT(*) FROM "CrisisEvent" WHERE "userId" = $1 AND "escalated" = true
+`
+
+func (q *Queries) CountEscalatedCrisisEventsForUser(ctx context.Context, userid int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countEscalatedCrisisEventsForUser, userid)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createCrisisEvent = `-- name: CreateCrisisEvent :one
+INSERT INTO "CrisisEvent" ("userId", "details", "escalated")
+VALUES ($1, $2, $3)
+RETURNING id, "userId", "detectedAt", details, escalated
+`
+
+type CreateCrisisEventParams struct {
+	UserId    int64   `json:"userId"`
+	Details   *string `json:"details"`
+	Escalated bool    `json:"escalated"`
+}
+
+func (q *Queries) CreateCrisisEvent(ctx context.Context, arg CreateCrisisEventParams) (CrisisEvent, error) {
+	row := q.db.QueryRow(ctx, createCrisisEvent, arg.UserId, arg.Details, arg.Escalated)
+	var i CrisisEvent
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.DetectedAt,
+		&i.Details,
+		&i.Escalated,
+	)
+	return i, err
+}
+
+const crisisEventsForUser = `-- name: CrisisEventsForUser :many
+SELECT id, "userId", "detectedAt", details, escalated FROM "CrisisEvent"
+WHERE "userId" = $1
+ORDER BY "detectedAt" DESC
+LIMIT $2
+`
+
+type CrisisEventsForUserParams struct {
+	UserId int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+}
+
+func (q *Queries) CrisisEventsForUser(ctx context.Context, arg CrisisEventsForUserParams) ([]CrisisEvent, error) {
+	rows, err := q.db.Query(ctx, crisisEventsForUser, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CrisisEvent
+	for rows.Next() {
+		var i CrisisEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.DetectedAt,
+			&i.Details,
+			&i.Escalated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

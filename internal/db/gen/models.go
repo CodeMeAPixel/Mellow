@@ -1,0 +1,217 @@
+package gen
+
+import (
+	"time"
+)
+
+type ConversationHistory struct {
+	ID           int32     `json:"id"`
+	UserId       int64     `json:"userId"`
+	Content      string    `json:"content"`
+	IsAiResponse bool      `json:"isAiResponse"`
+	Timestamp    time.Time `json:"timestamp"`
+	ChannelId    *string   `json:"channelId"`
+	GuildId      *string   `json:"guildId"`
+	MessageId    *string   `json:"messageId"`
+	ContextType  string    `json:"contextType"`
+	ParentId     *int32    `json:"parentId"`
+	Metadata     []byte    `json:"metadata"`
+}
+
+type CopingPlan struct {
+	ID        int32     `json:"id"`
+	UserId    int64     `json:"userId"`
+	Plan      string    `json:"plan"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type CopingToolUsage struct {
+	ID       int32     `json:"id"`
+	UserId   int64     `json:"userId"`
+	ToolName string    `json:"toolName"`
+	UsedAt   time.Time `json:"usedAt"`
+}
+
+type CrisisEvent struct {
+	ID         int32     `json:"id"`
+	UserId     int64     `json:"userId"`
+	DetectedAt time.Time `json:"detectedAt"`
+	Details    *string   `json:"details"`
+	Escalated  bool      `json:"escalated"`
+}
+
+type FavoriteCopingTool struct {
+	ID     int32  `json:"id"`
+	UserId int64  `json:"userId"`
+	Tool   string `json:"tool"`
+}
+
+type Feedback struct {
+	ID        int32     `json:"id"`
+	UserId    *int64    `json:"userId"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"createdAt"`
+	Featured  bool      `json:"featured"`
+	Approved  bool      `json:"approved"`
+	Public    bool      `json:"public"`
+}
+
+type FeedbackReply struct {
+	ID         int32     `json:"id"`
+	FeedbackId int32     `json:"feedbackId"`
+	StaffId    *int64    `json:"staffId"`
+	Message    string    `json:"message"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+type GhostLetter struct {
+	ID        int32     `json:"id"`
+	UserId    int64     `json:"userId"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type GratitudeEntry struct {
+	ID        int32     `json:"id"`
+	UserId    int64     `json:"userId"`
+	Item      string    `json:"item"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type Guild struct {
+	ID                    int64      `json:"id"`
+	Name                  string     `json:"name"`
+	OwnerId               int64      `json:"ownerId"`
+	JoinedAt              time.Time  `json:"joinedAt"`
+	IsBanned              bool       `json:"isBanned"`
+	BannedUntil           *time.Time `json:"bannedUntil"`
+	BanReason             *string    `json:"banReason"`
+	SystemRoleId          *string    `json:"systemRoleId"`
+	SystemChannelId       *string    `json:"systemChannelId"`
+	SystemLogsEnabled     bool       `json:"systemLogsEnabled"`
+	AuditLogChannelId     *string    `json:"auditLogChannelId"`
+	ModAlertChannelId     *string    `json:"modAlertChannelId"`
+	ModLogChannelId       *string    `json:"modLogChannelId"`
+	CheckInChannelId      *string    `json:"checkInChannelId"`
+	CopingToolLogId       *string    `json:"copingToolLogId"`
+	EnableCheckIns        bool       `json:"enableCheckIns"`
+	EnableGhostLetters    bool       `json:"enableGhostLetters"`
+	EnableCrisisAlerts    bool       `json:"enableCrisisAlerts"`
+	ModeratorRoleId       *string    `json:"moderatorRoleId"`
+	AutoModEnabled        bool       `json:"autoModEnabled"`
+	AutoModLevel          *int32     `json:"autoModLevel"`
+	Language              *string    `json:"language"`
+	DisableContextLogging bool       `json:"disableContextLogging"`
+	DiscordId             *string    `json:"discordId"`
+}
+
+type JournalEntry struct {
+	ID        int32     `json:"id"`
+	UserId    int64     `json:"userId"`
+	Content   string    `json:"content"`
+	Private   bool      `json:"private"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type Mellow struct {
+	ID               int64    `json:"id"`
+	Model            *string  `json:"model"`
+	Prompt           *string  `json:"prompt"`
+	Temperature      float64  `json:"temperature"`
+	PresencePenalty  float64  `json:"presencePenalty"`
+	FrequencyPenalty float64  `json:"frequencyPenalty"`
+	MaxTokens        int32    `json:"maxTokens"`
+	Enabled          bool     `json:"enabled"`
+	CheckInTools     bool     `json:"checkInTools"`
+	CopingTools      bool     `json:"copingTools"`
+	GhostTools       bool     `json:"ghostTools"`
+	CrisisTools      bool     `json:"crisisTools"`
+	Owners           []string `json:"owners"`
+	FeedbackLogs     *int64   `json:"feedbackLogs"`
+	ReportLogs       *int64   `json:"reportLogs"`
+	ServerId         *int64   `json:"serverId"`
+	AdminId          *int64   `json:"adminId"`
+	ModId            *int64   `json:"modId"`
+	LogId            *int64   `json:"logId"`
+}
+
+type ModAction struct {
+	ID           int32     `json:"id"`
+	GuildId      int64     `json:"guildId"`
+	ModeratorId  int64     `json:"moderatorId"`
+	TargetUserId int64     `json:"targetUserId"`
+	Action       string    `json:"action"`
+	Reason       *string   `json:"reason"`
+	RoleId       *int64    `json:"roleId"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+type MoodCheckIn struct {
+	ID          int32      `json:"id"`
+	UserId      int64      `json:"userId"`
+	Mood        string     `json:"mood"`
+	Intensity   *int32     `json:"intensity"`
+	Activity    *string    `json:"activity"`
+	Note        *string    `json:"note"`
+	NextCheckIn *time.Time `json:"nextCheckIn"`
+	CreatedAt   time.Time  `json:"createdAt"`
+}
+
+type Report struct {
+	ID        int32     `json:"id"`
+	UserId    *int64    `json:"userId"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"createdAt"`
+	Status    string    `json:"status"`
+}
+
+type ReportReply struct {
+	ID        int32     `json:"id"`
+	ReportId  int32     `json:"reportId"`
+	StaffId   *int64    `json:"staffId"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type SystemLog struct {
+	ID          int32     `json:"id"`
+	GuildId     *int64    `json:"guildId"`
+	UserId      *int64    `json:"userId"`
+	LogType     string    `json:"logType"`
+	Title       string    `json:"title"`
+	Description *string   `json:"description"`
+	Metadata    *string   `json:"metadata"`
+	Severity    string    `json:"severity"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
+type User struct {
+	ID          int64       `json:"id"`
+	Username    string      `json:"username"`
+	Role        interface{} `json:"role"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	IsBanned    bool        `json:"isBanned"`
+	BannedUntil *time.Time  `json:"bannedUntil"`
+	BanReason   *string     `json:"banReason"`
+	DiscordId   *string     `json:"discordId"`
+}
+
+type UserPreferences struct {
+	ID                      int64      `json:"id"`
+	CheckInInterval         int32      `json:"checkInInterval"`
+	LastReminder            *time.Time `json:"lastReminder"`
+	NextCheckIn             *time.Time `json:"nextCheckIn"`
+	RemindersEnabled        bool       `json:"remindersEnabled"`
+	ReminderMethod          *string    `json:"reminderMethod"`
+	JournalPrivacy          bool       `json:"journalPrivacy"`
+	AiPersonality           *string    `json:"aiPersonality"`
+	ProfileTheme            *string    `json:"profileTheme"`
+	Language                *string    `json:"language"`
+	Timezone                *string    `json:"timezone"`
+	DisableContextLogging   bool       `json:"disableContextLogging"`
+	DisableCrisisDetection  bool       `json:"disableCrisisDetection"`
+	DisableCrisisSupportDMs bool       `json:"disableCrisisSupportDMs"`
+	CreatedAt               time.Time  `json:"createdAt"`
+	UpdatedAt               time.Time  `json:"updatedAt"`
+}

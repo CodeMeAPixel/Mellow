@@ -1,0 +1,106 @@
+package gen
+
+import (
+	"context"
+)
+
+const countGuilds = `-- name: CountGuilds :one
+SELECT COUNT(*) FROM "Guild"
+`
+
+func (q *Queries) CountGuilds(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countGuilds)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteGuild = `-- name: DeleteGuild :exec
+DELETE FROM "Guild" WHERE "id" = $1
+`
+
+func (q *Queries) DeleteGuild(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteGuild, id)
+	return err
+}
+
+const getGuild = `-- name: GetGuild :one
+SELECT id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId" FROM "Guild" WHERE "id" = $1
+`
+
+func (q *Queries) GetGuild(ctx context.Context, id int64) (Guild, error) {
+	row := q.db.QueryRow(ctx, getGuild, id)
+	var i Guild
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.OwnerId,
+		&i.JoinedAt,
+		&i.IsBanned,
+		&i.BannedUntil,
+		&i.BanReason,
+		&i.SystemRoleId,
+		&i.SystemChannelId,
+		&i.SystemLogsEnabled,
+		&i.AuditLogChannelId,
+		&i.ModAlertChannelId,
+		&i.ModLogChannelId,
+		&i.CheckInChannelId,
+		&i.CopingToolLogId,
+		&i.EnableCheckIns,
+		&i.EnableGhostLetters,
+		&i.EnableCrisisAlerts,
+		&i.ModeratorRoleId,
+		&i.AutoModEnabled,
+		&i.AutoModLevel,
+		&i.Language,
+		&i.DisableContextLogging,
+		&i.DiscordId,
+	)
+	return i, err
+}
+
+const upsertGuild = `-- name: UpsertGuild :one
+INSERT INTO "Guild" ("id", "name", "ownerId")
+VALUES ($1, $2, $3)
+ON CONFLICT ("id") DO UPDATE SET "name" = EXCLUDED."name", "ownerId" = EXCLUDED."ownerId"
+RETURNING id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId"
+`
+
+type UpsertGuildParams struct {
+	ID      int64  `json:"id"`
+	Name    string `json:"name"`
+	OwnerId int64  `json:"ownerId"`
+}
+
+func (q *Queries) UpsertGuild(ctx context.Context, arg UpsertGuildParams) (Guild, error) {
+	row := q.db.QueryRow(ctx, upsertGuild, arg.ID, arg.Name, arg.OwnerId)
+	var i Guild
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.OwnerId,
+		&i.JoinedAt,
+		&i.IsBanned,
+		&i.BannedUntil,
+		&i.BanReason,
+		&i.SystemRoleId,
+		&i.SystemChannelId,
+		&i.SystemLogsEnabled,
+		&i.AuditLogChannelId,
+		&i.ModAlertChannelId,
+		&i.ModLogChannelId,
+		&i.CheckInChannelId,
+		&i.CopingToolLogId,
+		&i.EnableCheckIns,
+		&i.EnableGhostLetters,
+		&i.EnableCrisisAlerts,
+		&i.ModeratorRoleId,
+		&i.AutoModEnabled,
+		&i.AutoModLevel,
+		&i.Language,
+		&i.DisableContextLogging,
+		&i.DiscordId,
+	)
+	return i, err
+}

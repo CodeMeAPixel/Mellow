@@ -1,0 +1,90 @@
+package gen
+
+import (
+	"context"
+)
+
+const createSystemLog = `-- name: CreateSystemLog :one
+INSERT INTO "SystemLog" (
+    "guildId", "userId", "logType", "title", "description", "metadata", "severity"
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, "guildId", "userId", "logType", title, description, metadata, severity, "createdAt"
+`
+
+type CreateSystemLogParams struct {
+	GuildId     *int64  `json:"guildId"`
+	UserId      *int64  `json:"userId"`
+	LogType     string  `json:"logType"`
+	Title       string  `json:"title"`
+	Description *string `json:"description"`
+	Metadata    *string `json:"metadata"`
+	Severity    string  `json:"severity"`
+}
+
+func (q *Queries) CreateSystemLog(ctx context.Context, arg CreateSystemLogParams) (SystemLog, error) {
+	row := q.db.QueryRow(ctx, createSystemLog,
+		arg.GuildId,
+		arg.UserId,
+		arg.LogType,
+		arg.Title,
+		arg.Description,
+		arg.Metadata,
+		arg.Severity,
+	)
+	var i SystemLog
+	err := row.Scan(
+		&i.ID,
+		&i.GuildId,
+		&i.UserId,
+		&i.LogType,
+		&i.Title,
+		&i.Description,
+		&i.Metadata,
+		&i.Severity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const recentSystemLogs = `-- name: RecentSystemLogs :many
+SELECT id, "guildId", "userId", "logType", title, description, metadata, severity, "createdAt" FROM "SystemLog"
+WHERE ($2::text IS NULL OR "logType" = $2)
+ORDER BY "createdAt" DESC
+LIMIT $1
+`
+
+type RecentSystemLogsParams struct {
+	Limit   int32   `json:"limit"`
+	LogType *string `json:"log_type"`
+}
+
+func (q *Queries) RecentSystemLogs(ctx context.Context, arg RecentSystemLogsParams) ([]SystemLog, error) {
+	rows, err := q.db.Query(ctx, recentSystemLogs, arg.Limit, arg.LogType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemLog
+	for rows.Next() {
+		var i SystemLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.GuildId,
+			&i.UserId,
+			&i.LogType,
+			&i.Title,
+			&i.Description,
+			&i.Metadata,
+			&i.Severity,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

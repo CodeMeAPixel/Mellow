@@ -1,0 +1,261 @@
+package gen
+
+import (
+	"context"
+	"time"
+)
+
+const addConversationMessage = `-- name: AddConversationMessage :one
+INSERT INTO "ConversationHistory" (
+    "userId", "content", "isAiResponse",
+    "channelId", "guildId", "messageId", "contextType", "parentId", "metadata"
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, "userId", content, "isAiResponse", timestamp, "channelId", "guildId", "messageId", "contextType", "parentId", metadata
+`
+
+type AddConversationMessageParams struct {
+	UserId       int64   `json:"userId"`
+	Content      string  `json:"content"`
+	IsAiResponse bool    `json:"isAiResponse"`
+	ChannelId    *string `json:"channelId"`
+	GuildId      *string `json:"guildId"`
+	MessageId    *string `json:"messageId"`
+	ContextType  string  `json:"contextType"`
+	ParentId     *int32  `json:"parentId"`
+	Metadata     []byte  `json:"metadata"`
+}
+
+func (q *Queries) AddConversationMessage(ctx context.Context, arg AddConversationMessageParams) (ConversationHistory, error) {
+	row := q.db.QueryRow(ctx, addConversationMessage,
+		arg.UserId,
+		arg.Content,
+		arg.IsAiResponse,
+		arg.ChannelId,
+		arg.GuildId,
+		arg.MessageId,
+		arg.ContextType,
+		arg.ParentId,
+		arg.Metadata,
+	)
+	var i ConversationHistory
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Content,
+		&i.IsAiResponse,
+		&i.Timestamp,
+		&i.ChannelId,
+		&i.GuildId,
+		&i.MessageId,
+		&i.ContextType,
+		&i.ParentId,
+		&i.Metadata,
+	)
+	return i, err
+}
+
+const conversationSummarySource = `-- name: ConversationSummarySource :many
+SELECT content FROM "ConversationHistory"
+WHERE "userId" = $1
+  AND "isAiResponse" = false
+  AND "contextType" = 'conversation'
+  AND "timestamp" >= now() - ($2 || ' days')::interval
+ORDER BY "timestamp" DESC
+LIMIT 20
+`
+
+type ConversationSummarySourceParams struct {
+	UserId  int64   `json:"userId"`
+	Column2 *string `json:"column_2"`
+}
+
+func (q *Queries) ConversationSummarySource(ctx context.Context, arg ConversationSummarySourceParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, conversationSummarySource, arg.UserId, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var content string
+		if err := rows.Scan(&content); err != nil {
+			return nil, err
+		}
+		items = append(items, content)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countConversationMessages = `-- name: CountConversationMessages :one
+SELECT COUNT(*) FROM "ConversationHistory"
+`
+
+func (q *Queries) CountConversationMessages(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countConversationMessages)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const recentChannelContext = `-- name: RecentChannelContext :many
+SELECT ch.id, ch."userId", ch.content, ch."isAiResponse", ch.timestamp,
+       ch."channelId", ch."guildId", ch."messageId", ch."contextType", ch."parentId", ch.metadata,
+       u."username" AS username
+FROM "ConversationHistory" ch
+JOIN "User" u ON u."id" = ch."userId"
+WHERE ch."channelId" = $1
+  AND ch."userId" <> $2
+  AND ch."isAiResponse" = false
+  AND ch."timestamp" >= now() - interval '1 hour'
+ORDER BY ch."timestamp" DESC
+LIMIT $3
+`
+
+type RecentChannelContextParams struct {
+	ChannelId *string `json:"channelId"`
+	UserId    int64   `json:"userId"`
+	Limit     int32   `json:"limit"`
+}
+
+type RecentChannelContextRow struct {
+	ID           int32     `json:"id"`
+	UserId       int64     `json:"userId"`
+	Content      string    `json:"content"`
+	IsAiResponse bool      `json:"isAiResponse"`
+	Timestamp    time.Time `json:"timestamp"`
+	ChannelId    *string   `json:"channelId"`
+	GuildId      *string   `json:"guildId"`
+	MessageId    *string   `json:"messageId"`
+	ContextType  string    `json:"contextType"`
+	ParentId     *int32    `json:"parentId"`
+	Metadata     []byte    `json:"metadata"`
+	Username     string    `json:"username"`
+}
+
+func (q *Queries) RecentChannelContext(ctx context.Context, arg RecentChannelContextParams) ([]RecentChannelContextRow, error) {
+	rows, err := q.db.Query(ctx, recentChannelContext, arg.ChannelId, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RecentChannelContextRow
+	for rows.Next() {
+		var i RecentChannelContextRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Content,
+			&i.IsAiResponse,
+			&i.Timestamp,
+			&i.ChannelId,
+			&i.GuildId,
+			&i.MessageId,
+			&i.ContextType,
+			&i.ParentId,
+			&i.Metadata,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const recentChannelConversation = `-- name: RecentChannelConversation :many
+SELECT id, "userId", content, "isAiResponse", timestamp, "channelId", "guildId", "messageId", "contextType", "parentId", metadata FROM "ConversationHistory"
+WHERE "channelId" = $1 AND "userId" <> $2
+ORDER BY "timestamp" DESC
+LIMIT $3
+`
+
+type RecentChannelConversationParams struct {
+	ChannelId *string `json:"channelId"`
+	UserId    int64   `json:"userId"`
+	Limit     int32   `json:"limit"`
+}
+
+func (q *Queries) RecentChannelConversation(ctx context.Context, arg RecentChannelConversationParams) ([]ConversationHistory, error) {
+	rows, err := q.db.Query(ctx, recentChannelConversation, arg.ChannelId, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ConversationHistory
+	for rows.Next() {
+		var i ConversationHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Content,
+			&i.IsAiResponse,
+			&i.Timestamp,
+			&i.ChannelId,
+			&i.GuildId,
+			&i.MessageId,
+			&i.ContextType,
+			&i.ParentId,
+			&i.Metadata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const recentConversationForUser = `-- name: RecentConversationForUser :many
+SELECT id, "userId", content, "isAiResponse", timestamp, "channelId", "guildId", "messageId", "contextType", "parentId", metadata FROM "ConversationHistory"
+WHERE "userId" = $1
+  AND ($3::text IS NULL OR "guildId" = $3)
+ORDER BY "timestamp" DESC
+LIMIT $2
+`
+
+type RecentConversationForUserParams struct {
+	UserId  int64   `json:"userId"`
+	Limit   int32   `json:"limit"`
+	GuildID *string `json:"guild_id"`
+}
+
+func (q *Queries) RecentConversationForUser(ctx context.Context, arg RecentConversationForUserParams) ([]ConversationHistory, error) {
+	rows, err := q.db.Query(ctx, recentConversationForUser, arg.UserId, arg.Limit, arg.GuildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ConversationHistory
+	for rows.Next() {
+		var i ConversationHistory
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Content,
+			&i.IsAiResponse,
+			&i.Timestamp,
+			&i.ChannelId,
+			&i.GuildId,
+			&i.MessageId,
+			&i.ContextType,
+			&i.ParentId,
+			&i.Metadata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

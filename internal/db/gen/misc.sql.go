@@ -1,0 +1,206 @@
+package gen
+
+import (
+	"context"
+)
+
+const countGhostLettersForUser = `-- name: CountGhostLettersForUser :one
+SELECT COUNT(*) FROM "GhostLetter" WHERE "userId" = $1
+`
+
+func (q *Queries) CountGhostLettersForUser(ctx context.Context, userid int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countGhostLettersForUser, userid)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countGratitudeForUser = `-- name: CountGratitudeForUser :one
+SELECT COUNT(*) FROM "GratitudeEntry" WHERE "userId" = $1
+`
+
+func (q *Queries) CountGratitudeForUser(ctx context.Context, userid int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countGratitudeForUser, userid)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createFeedback = `-- name: CreateFeedback :one
+INSERT INTO "Feedback" ("userId", "message")
+VALUES ($1, $2)
+RETURNING id, "userId", message, "createdAt", featured, approved, public
+`
+
+type CreateFeedbackParams struct {
+	UserId  *int64 `json:"userId"`
+	Message string `json:"message"`
+}
+
+func (q *Queries) CreateFeedback(ctx context.Context, arg CreateFeedbackParams) (Feedback, error) {
+	row := q.db.QueryRow(ctx, createFeedback, arg.UserId, arg.Message)
+	var i Feedback
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Message,
+		&i.CreatedAt,
+		&i.Featured,
+		&i.Approved,
+		&i.Public,
+	)
+	return i, err
+}
+
+const createGhostLetter = `-- name: CreateGhostLetter :one
+INSERT INTO "GhostLetter" ("userId", "content")
+VALUES ($1, $2)
+RETURNING id, "userId", content, "createdAt"
+`
+
+type CreateGhostLetterParams struct {
+	UserId  int64  `json:"userId"`
+	Content string `json:"content"`
+}
+
+func (q *Queries) CreateGhostLetter(ctx context.Context, arg CreateGhostLetterParams) (GhostLetter, error) {
+	row := q.db.QueryRow(ctx, createGhostLetter, arg.UserId, arg.Content)
+	var i GhostLetter
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Content,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createReport = `-- name: CreateReport :one
+INSERT INTO "Report" ("userId", "message")
+VALUES ($1, $2)
+RETURNING id, "userId", message, "createdAt", status
+`
+
+type CreateReportParams struct {
+	UserId  *int64 `json:"userId"`
+	Message string `json:"message"`
+}
+
+func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Report, error) {
+	row := q.db.QueryRow(ctx, createReport, arg.UserId, arg.Message)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Message,
+		&i.CreatedAt,
+		&i.Status,
+	)
+	return i, err
+}
+
+const ghostLettersForUser = `-- name: GhostLettersForUser :many
+SELECT id, "userId", content, "createdAt" FROM "GhostLetter"
+WHERE "userId" = $1
+ORDER BY "createdAt" DESC
+LIMIT $2
+`
+
+type GhostLettersForUserParams struct {
+	UserId int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+}
+
+func (q *Queries) GhostLettersForUser(ctx context.Context, arg GhostLettersForUserParams) ([]GhostLetter, error) {
+	rows, err := q.db.Query(ctx, ghostLettersForUser, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GhostLetter
+	for rows.Next() {
+		var i GhostLetter
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Content,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateUserPreferences = `-- name: UpdateUserPreferences :one
+UPDATE "UserPreferences" SET
+    "aiPersonality"           = COALESCE($2, "aiPersonality"),
+    "timezone"                = COALESCE($3, "timezone"),
+    "language"                = COALESCE($4, "language"),
+    "reminderMethod"          = COALESCE($5, "reminderMethod"),
+    "profileTheme"            = COALESCE($6, "profileTheme"),
+    "checkInInterval"         = COALESCE($7, "checkInInterval"),
+    "remindersEnabled"        = COALESCE($8, "remindersEnabled"),
+    "journalPrivacy"          = COALESCE($9, "journalPrivacy"),
+    "disableContextLogging"   = COALESCE($10, "disableContextLogging"),
+    "disableCrisisDetection"  = COALESCE($11, "disableCrisisDetection"),
+    "disableCrisisSupportDMs" = COALESCE($12, "disableCrisisSupportDMs")
+WHERE "id" = $1
+RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt"
+`
+
+type UpdateUserPreferencesParams struct {
+	ID                      int64   `json:"id"`
+	AiPersonality           *string `json:"ai_personality"`
+	Timezone                *string `json:"timezone"`
+	Language                *string `json:"language"`
+	ReminderMethod          *string `json:"reminder_method"`
+	ProfileTheme            *string `json:"profile_theme"`
+	CheckInInterval         *int32  `json:"check_in_interval"`
+	RemindersEnabled        *bool   `json:"reminders_enabled"`
+	JournalPrivacy          *bool   `json:"journal_privacy"`
+	DisableContextLogging   *bool   `json:"disable_context_logging"`
+	DisableCrisisDetection  *bool   `json:"disable_crisis_detection"`
+	DisableCrisisSupportDms *bool   `json:"disable_crisis_support_dms"`
+}
+
+func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreferences, error) {
+	row := q.db.QueryRow(ctx, updateUserPreferences,
+		arg.ID,
+		arg.AiPersonality,
+		arg.Timezone,
+		arg.Language,
+		arg.ReminderMethod,
+		arg.ProfileTheme,
+		arg.CheckInInterval,
+		arg.RemindersEnabled,
+		arg.JournalPrivacy,
+		arg.DisableContextLogging,
+		arg.DisableCrisisDetection,
+		arg.DisableCrisisSupportDms,
+	)
+	var i UserPreferences
+	err := row.Scan(
+		&i.ID,
+		&i.CheckInInterval,
+		&i.LastReminder,
+		&i.NextCheckIn,
+		&i.RemindersEnabled,
+		&i.ReminderMethod,
+		&i.JournalPrivacy,
+		&i.AiPersonality,
+		&i.ProfileTheme,
+		&i.Language,
+		&i.Timezone,
+		&i.DisableContextLogging,
+		&i.DisableCrisisDetection,
+		&i.DisableCrisisSupportDMs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

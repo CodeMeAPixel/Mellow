@@ -1,0 +1,158 @@
+package gen
+
+import (
+	"context"
+	"time"
+)
+
+const dueForReminder = `-- name: DueForReminder :many
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt" FROM "UserPreferences"
+WHERE "remindersEnabled" = true
+  AND "nextCheckIn" IS NOT NULL
+  AND "nextCheckIn" <= now()
+`
+
+func (q *Queries) DueForReminder(ctx context.Context) ([]UserPreferences, error) {
+	rows, err := q.db.Query(ctx, dueForReminder)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserPreferences
+	for rows.Next() {
+		var i UserPreferences
+		if err := rows.Scan(
+			&i.ID,
+			&i.CheckInInterval,
+			&i.LastReminder,
+			&i.NextCheckIn,
+			&i.RemindersEnabled,
+			&i.ReminderMethod,
+			&i.JournalPrivacy,
+			&i.AiPersonality,
+			&i.ProfileTheme,
+			&i.Language,
+			&i.Timezone,
+			&i.DisableContextLogging,
+			&i.DisableCrisisDetection,
+			&i.DisableCrisisSupportDMs,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ensureUserPreferences = `-- name: EnsureUserPreferences :one
+INSERT INTO "UserPreferences" ("id")
+VALUES ($1)
+ON CONFLICT ("id") DO UPDATE SET "id" = "UserPreferences"."id"
+RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt"
+`
+
+func (q *Queries) EnsureUserPreferences(ctx context.Context, id int64) (UserPreferences, error) {
+	row := q.db.QueryRow(ctx, ensureUserPreferences, id)
+	var i UserPreferences
+	err := row.Scan(
+		&i.ID,
+		&i.CheckInInterval,
+		&i.LastReminder,
+		&i.NextCheckIn,
+		&i.RemindersEnabled,
+		&i.ReminderMethod,
+		&i.JournalPrivacy,
+		&i.AiPersonality,
+		&i.ProfileTheme,
+		&i.Language,
+		&i.Timezone,
+		&i.DisableContextLogging,
+		&i.DisableCrisisDetection,
+		&i.DisableCrisisSupportDMs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserPreferences = `-- name: GetUserPreferences :one
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt" FROM "UserPreferences" WHERE "id" = $1
+`
+
+func (q *Queries) GetUserPreferences(ctx context.Context, id int64) (UserPreferences, error) {
+	row := q.db.QueryRow(ctx, getUserPreferences, id)
+	var i UserPreferences
+	err := row.Scan(
+		&i.ID,
+		&i.CheckInInterval,
+		&i.LastReminder,
+		&i.NextCheckIn,
+		&i.RemindersEnabled,
+		&i.ReminderMethod,
+		&i.JournalPrivacy,
+		&i.AiPersonality,
+		&i.ProfileTheme,
+		&i.Language,
+		&i.Timezone,
+		&i.DisableContextLogging,
+		&i.DisableCrisisDetection,
+		&i.DisableCrisisSupportDMs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const markReminderSent = `-- name: MarkReminderSent :exec
+UPDATE "UserPreferences"
+SET "lastReminder" = $2, "nextCheckIn" = $3
+WHERE "id" = $1
+`
+
+type MarkReminderSentParams struct {
+	ID           int64      `json:"id"`
+	LastReminder *time.Time `json:"lastReminder"`
+	NextCheckIn  *time.Time `json:"nextCheckIn"`
+}
+
+func (q *Queries) MarkReminderSent(ctx context.Context, arg MarkReminderSentParams) error {
+	_, err := q.db.Exec(ctx, markReminderSent, arg.ID, arg.LastReminder, arg.NextCheckIn)
+	return err
+}
+
+const setCheckInInterval = `-- name: SetCheckInInterval :exec
+UPDATE "UserPreferences"
+SET "checkInInterval" = $2
+WHERE "id" = $1
+`
+
+type SetCheckInIntervalParams struct {
+	ID              int64 `json:"id"`
+	CheckInInterval int32 `json:"checkInInterval"`
+}
+
+func (q *Queries) SetCheckInInterval(ctx context.Context, arg SetCheckInIntervalParams) error {
+	_, err := q.db.Exec(ctx, setCheckInInterval, arg.ID, arg.CheckInInterval)
+	return err
+}
+
+const setNextCheckIn = `-- name: SetNextCheckIn :exec
+UPDATE "UserPreferences"
+SET "nextCheckIn" = $2
+WHERE "id" = $1
+`
+
+type SetNextCheckInParams struct {
+	ID          int64      `json:"id"`
+	NextCheckIn *time.Time `json:"nextCheckIn"`
+}
+
+func (q *Queries) SetNextCheckIn(ctx context.Context, arg SetNextCheckInParams) error {
+	_, err := q.db.Exec(ctx, setNextCheckIn, arg.ID, arg.NextCheckIn)
+	return err
+}

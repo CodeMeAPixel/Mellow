@@ -1,0 +1,396 @@
+package gen
+
+import (
+	"context"
+)
+
+const addFavoriteCopingTool = `-- name: AddFavoriteCopingTool :one
+INSERT INTO "FavoriteCopingTool" ("userId", "tool")
+VALUES ($1, $2)
+RETURNING id, "userId", tool
+`
+
+type AddFavoriteCopingToolParams struct {
+	UserId int64  `json:"userId"`
+	Tool   string `json:"tool"`
+}
+
+func (q *Queries) AddFavoriteCopingTool(ctx context.Context, arg AddFavoriteCopingToolParams) (FavoriteCopingTool, error) {
+	row := q.db.QueryRow(ctx, addFavoriteCopingTool, arg.UserId, arg.Tool)
+	var i FavoriteCopingTool
+	err := row.Scan(&i.ID, &i.UserId, &i.Tool)
+	return i, err
+}
+
+const copingToolUsageCountsForUser = `-- name: CopingToolUsageCountsForUser :many
+SELECT "toolName", COUNT(*) AS uses
+FROM "CopingToolUsage"
+WHERE "userId" = $1
+GROUP BY "toolName"
+ORDER BY uses DESC
+`
+
+type CopingToolUsageCountsForUserRow struct {
+	ToolName string `json:"toolName"`
+	Uses     int64  `json:"uses"`
+}
+
+func (q *Queries) CopingToolUsageCountsForUser(ctx context.Context, userid int64) ([]CopingToolUsageCountsForUserRow, error) {
+	rows, err := q.db.Query(ctx, copingToolUsageCountsForUser, userid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CopingToolUsageCountsForUserRow
+	for rows.Next() {
+		var i CopingToolUsageCountsForUserRow
+		if err := rows.Scan(&i.ToolName, &i.Uses); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const copingToolUsagesForUser = `-- name: CopingToolUsagesForUser :many
+SELECT id, "userId", "toolName", "usedAt" FROM "CopingToolUsage"
+WHERE "userId" = $1
+ORDER BY "usedAt" DESC
+LIMIT $2
+`
+
+type CopingToolUsagesForUserParams struct {
+	UserId int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+}
+
+func (q *Queries) CopingToolUsagesForUser(ctx context.Context, arg CopingToolUsagesForUserParams) ([]CopingToolUsage, error) {
+	rows, err := q.db.Query(ctx, copingToolUsagesForUser, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CopingToolUsage
+	for rows.Next() {
+		var i CopingToolUsage
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.ToolName,
+			&i.UsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countJournalEntries = `-- name: CountJournalEntries :one
+SELECT COUNT(*) FROM "JournalEntry" WHERE "userId" = $1
+`
+
+func (q *Queries) CountJournalEntries(ctx context.Context, userid int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countJournalEntries, userid)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createCopingPlan = `-- name: CreateCopingPlan :one
+INSERT INTO "CopingPlan" ("userId", "plan")
+VALUES ($1, $2)
+RETURNING id, "userId", plan, "createdAt", "updatedAt"
+`
+
+type CreateCopingPlanParams struct {
+	UserId int64  `json:"userId"`
+	Plan   string `json:"plan"`
+}
+
+func (q *Queries) CreateCopingPlan(ctx context.Context, arg CreateCopingPlanParams) (CopingPlan, error) {
+	row := q.db.QueryRow(ctx, createCopingPlan, arg.UserId, arg.Plan)
+	var i CopingPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Plan,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createGratitudeEntry = `-- name: CreateGratitudeEntry :one
+INSERT INTO "GratitudeEntry" ("userId", "item")
+VALUES ($1, $2)
+RETURNING id, "userId", item, "createdAt"
+`
+
+type CreateGratitudeEntryParams struct {
+	UserId int64  `json:"userId"`
+	Item   string `json:"item"`
+}
+
+func (q *Queries) CreateGratitudeEntry(ctx context.Context, arg CreateGratitudeEntryParams) (GratitudeEntry, error) {
+	row := q.db.QueryRow(ctx, createGratitudeEntry, arg.UserId, arg.Item)
+	var i GratitudeEntry
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Item,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createJournalEntry = `-- name: CreateJournalEntry :one
+INSERT INTO "JournalEntry" ("userId", "content", "private")
+VALUES ($1, $2, $3)
+RETURNING id, "userId", content, private, "createdAt"
+`
+
+type CreateJournalEntryParams struct {
+	UserId  int64  `json:"userId"`
+	Content string `json:"content"`
+	Private bool   `json:"private"`
+}
+
+func (q *Queries) CreateJournalEntry(ctx context.Context, arg CreateJournalEntryParams) (JournalEntry, error) {
+	row := q.db.QueryRow(ctx, createJournalEntry, arg.UserId, arg.Content, arg.Private)
+	var i JournalEntry
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Content,
+		&i.Private,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteCopingPlan = `-- name: DeleteCopingPlan :execrows
+DELETE FROM "CopingPlan" WHERE "id" = $1 AND "userId" = $2
+`
+
+type DeleteCopingPlanParams struct {
+	ID     int32 `json:"id"`
+	UserId int64 `json:"userId"`
+}
+
+func (q *Queries) DeleteCopingPlan(ctx context.Context, arg DeleteCopingPlanParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCopingPlan, arg.ID, arg.UserId)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteJournalEntry = `-- name: DeleteJournalEntry :execrows
+DELETE FROM "JournalEntry" WHERE "id" = $1 AND "userId" = $2
+`
+
+type DeleteJournalEntryParams struct {
+	ID     int32 `json:"id"`
+	UserId int64 `json:"userId"`
+}
+
+func (q *Queries) DeleteJournalEntry(ctx context.Context, arg DeleteJournalEntryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteJournalEntry, arg.ID, arg.UserId)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const favoriteCopingTools = `-- name: FavoriteCopingTools :many
+SELECT id, "userId", tool FROM "FavoriteCopingTool"
+WHERE "userId" = $1
+ORDER BY "tool" ASC
+`
+
+func (q *Queries) FavoriteCopingTools(ctx context.Context, userid int64) ([]FavoriteCopingTool, error) {
+	rows, err := q.db.Query(ctx, favoriteCopingTools, userid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FavoriteCopingTool
+	for rows.Next() {
+		var i FavoriteCopingTool
+		if err := rows.Scan(&i.ID, &i.UserId, &i.Tool); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCopingPlan = `-- name: GetCopingPlan :one
+SELECT id, "userId", plan, "createdAt", "updatedAt" FROM "CopingPlan"
+WHERE "userId" = $1
+ORDER BY "updatedAt" DESC
+LIMIT 1
+`
+
+func (q *Queries) GetCopingPlan(ctx context.Context, userid int64) (CopingPlan, error) {
+	row := q.db.QueryRow(ctx, getCopingPlan, userid)
+	var i CopingPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Plan,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const gratitudeEntriesForUser = `-- name: GratitudeEntriesForUser :many
+SELECT id, "userId", item, "createdAt" FROM "GratitudeEntry"
+WHERE "userId" = $1
+ORDER BY "createdAt" DESC
+LIMIT $2
+`
+
+type GratitudeEntriesForUserParams struct {
+	UserId int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+}
+
+func (q *Queries) GratitudeEntriesForUser(ctx context.Context, arg GratitudeEntriesForUserParams) ([]GratitudeEntry, error) {
+	rows, err := q.db.Query(ctx, gratitudeEntriesForUser, arg.UserId, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GratitudeEntry
+	for rows.Next() {
+		var i GratitudeEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Item,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const journalEntriesForUser = `-- name: JournalEntriesForUser :many
+SELECT id, "userId", content, private, "createdAt" FROM "JournalEntry"
+WHERE "userId" = $1
+ORDER BY "createdAt" DESC
+LIMIT $2 OFFSET $3
+`
+
+type JournalEntriesForUserParams struct {
+	UserId int64 `json:"userId"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) JournalEntriesForUser(ctx context.Context, arg JournalEntriesForUserParams) ([]JournalEntry, error) {
+	rows, err := q.db.Query(ctx, journalEntriesForUser, arg.UserId, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []JournalEntry
+	for rows.Next() {
+		var i JournalEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserId,
+			&i.Content,
+			&i.Private,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const recordCopingToolUsage = `-- name: RecordCopingToolUsage :one
+INSERT INTO "CopingToolUsage" ("userId", "toolName")
+VALUES ($1, $2)
+RETURNING id, "userId", "toolName", "usedAt"
+`
+
+type RecordCopingToolUsageParams struct {
+	UserId   int64  `json:"userId"`
+	ToolName string `json:"toolName"`
+}
+
+func (q *Queries) RecordCopingToolUsage(ctx context.Context, arg RecordCopingToolUsageParams) (CopingToolUsage, error) {
+	row := q.db.QueryRow(ctx, recordCopingToolUsage, arg.UserId, arg.ToolName)
+	var i CopingToolUsage
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.ToolName,
+		&i.UsedAt,
+	)
+	return i, err
+}
+
+const removeFavoriteCopingTool = `-- name: RemoveFavoriteCopingTool :execrows
+DELETE FROM "FavoriteCopingTool" WHERE "userId" = $1 AND "tool" = $2
+`
+
+type RemoveFavoriteCopingToolParams struct {
+	UserId int64  `json:"userId"`
+	Tool   string `json:"tool"`
+}
+
+func (q *Queries) RemoveFavoriteCopingTool(ctx context.Context, arg RemoveFavoriteCopingToolParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeFavoriteCopingTool, arg.UserId, arg.Tool)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateCopingPlan = `-- name: UpdateCopingPlan :one
+UPDATE "CopingPlan" SET "plan" = $2
+WHERE "id" = $1
+RETURNING id, "userId", plan, "createdAt", "updatedAt"
+`
+
+type UpdateCopingPlanParams struct {
+	ID   int32  `json:"id"`
+	Plan string `json:"plan"`
+}
+
+func (q *Queries) UpdateCopingPlan(ctx context.Context, arg UpdateCopingPlanParams) (CopingPlan, error) {
+	row := q.db.QueryRow(ctx, updateCopingPlan, arg.ID, arg.Plan)
+	var i CopingPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.Plan,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

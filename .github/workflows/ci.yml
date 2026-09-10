@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+      - run: go mod download
+      - run: go vet ./...
+      - name: version
+        id: v
+        run: echo "value=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
+      - run: go build -ldflags "-X main.version=${{ steps.v.outputs.value }}" ./...
+      - run: go test ./...
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: version
+        id: v
+        run: echo "value=$(git describe --tags --always --dirty)" >> "$GITHUB_OUTPUT"
+      - run: docker build --build-arg VERSION=${{ steps.v.outputs.value }} -t mellow:ci .

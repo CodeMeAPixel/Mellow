@@ -1,0 +1,5 @@
+.env
+/mellow
+/mellow.exe
+/dist/
+*.out
