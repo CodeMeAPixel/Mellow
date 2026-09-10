@@ -35,6 +35,11 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Setup(cfg.LogLevel)
+	if version == "" || version == "dev" {
+		if v := os.Getenv("VERSION"); v != "" {
+			version = v
+		}
+	}
 	discord.SetVersion(version)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -90,7 +95,7 @@ func main() {
 
 	go reminder.New(b.Client(), store).Run(ctx)
 	go presence.Run(ctx, b.Client())
-	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, store, b.ShardCount).Run(ctx)
+	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, b.ShardCount, b.GuildCount, b.UserCount).Run(ctx)
 	go b.SweepGames(ctx)
 	go b.RunGuildSync(ctx)
 	go b.CheckForUpdates(ctx)
@@ -98,13 +103,15 @@ func main() {
 	omni := omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID)
 	go omniplexsync.New(omni,
 		func(c context.Context) (servers, users, shards int) {
-			st, _ := store.CommunityStats(c)
-			return int(st.Guilds), int(st.Users), b.ShardCount()
+			return b.GuildCount(), b.UserCount(), b.ShardCount()
 		},
 		b.OmniplexCommands,
 	).Run(ctx)
 
-	srv := server.New(cfg.Port, cfg.APIToken, store, aiClient, func() any { return b.StatusReport() })
+	srv := server.New(cfg.Port, cfg.APIToken, store, aiClient,
+		func() any { return b.StatusReport() },
+		func() (int, int) { return b.GuildCount(), b.UserCount() },
+	)
 	go func() {
 		slog.Info("http api listening", slog.Int("port", cfg.Port))
 		if err := srv.Start(); err != nil {

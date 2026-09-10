@@ -20,10 +20,11 @@ type Server struct {
 	ai       *ai.Client
 	token    string
 	statusFn func() any
+	countsFn func() (guilds, users int)
 }
 
-func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn func() any) *Server {
-	s := &Server{store: store, ai: aiClient, token: token, statusFn: statusFn}
+func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn func() any, countsFn func() (guilds, users int)) *Server {
+	s := &Server{store: store, ai: aiClient, token: token, statusFn: statusFn, countsFn: countsFn}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
@@ -96,7 +97,19 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "stats unavailable"})
 		return
 	}
-	writeJSON(w, http.StatusOK, st)
+	out := map[string]any{
+		"Users":         st.Users,
+		"Guilds":        st.Guilds,
+		"Conversations": st.Conversations,
+		"CrisisEvents":  st.CrisisEvents,
+		"MoodCheckIns":  st.MoodCheckIns,
+	}
+	if s.countsFn != nil {
+		g, u := s.countsFn()
+		out["Guilds"] = g
+		out["Users"] = u
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 type chatRequest struct {

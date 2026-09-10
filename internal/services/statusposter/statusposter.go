@@ -7,30 +7,36 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-
-	"github.com/CodeMeAPixel/Mellow/internal/db"
 )
 
 type Service struct {
 	url     string
 	key     string
 	version string
-	store   *db.Store
 	shards  func() int
+	guilds  func() int
+	users   func() int
 	client  *http.Client
 	every   time.Duration
 }
 
-func New(url, key, version string, store *db.Store, shards func() int) *Service {
+func New(url, key, version string, shards, guilds, users func() int) *Service {
 	if shards == nil {
 		shards = func() int { return 1 }
+	}
+	if guilds == nil {
+		guilds = func() int { return 0 }
+	}
+	if users == nil {
+		users = func() int { return 0 }
 	}
 	return &Service{
 		url:     url,
 		key:     key,
 		version: version,
-		store:   store,
 		shards:  shards,
+		guilds:  guilds,
+		users:   users,
 		client:  &http.Client{Timeout: 10 * time.Second},
 		every:   5 * time.Minute,
 	}
@@ -57,8 +63,8 @@ func (s *Service) Run(ctx context.Context) {
 type payload struct {
 	Status     bool   `json:"status"`
 	ShardCount int    `json:"shardCount"`
-	GuildCount int64  `json:"guildCount"`
-	UserCount  int64  `json:"userCount"`
+	GuildCount int    `json:"guildCount"`
+	UserCount  int    `json:"userCount"`
 	Version    string `json:"version"`
 	Message    string `json:"message"`
 	Timestamp  string `json:"timestamp"`
@@ -66,16 +72,11 @@ type payload struct {
 }
 
 func (s *Service) post(ctx context.Context) {
-	st, err := s.store.CommunityStats(ctx)
-	if err != nil {
-		slog.Warn("status poster stats failed", slog.String("err", err.Error()))
-		return
-	}
 	body, _ := json.Marshal(payload{
 		Status:     true,
 		ShardCount: s.shards(),
-		GuildCount: st.Guilds,
-		UserCount:  st.Users,
+		GuildCount: s.guilds(),
+		UserCount:  s.users(),
 		Version:    s.version,
 		Message:    "All systems operational",
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),

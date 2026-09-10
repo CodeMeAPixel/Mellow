@@ -14,6 +14,7 @@ type ShardStatus struct {
 	State     string `json:"state"`
 	LatencyMs int64  `json:"latencyMs"`
 	Guilds    int    `json:"guilds"`
+	Users     int    `json:"users"`
 	LastReady string `json:"lastReady,omitempty"`
 	Resumes   int    `json:"resumes"`
 }
@@ -25,8 +26,27 @@ type StatusReport struct {
 	UptimeSeconds int64         `json:"uptimeSeconds"`
 	ShardCount    int           `json:"shardCount"`
 	Guilds        int           `json:"guilds"`
+	Users         int           `json:"users"`
 	Shards        []ShardStatus `json:"shards"`
 	GeneratedAt   string        `json:"generatedAt"`
+}
+
+func (b *Bot) GuildCount() int {
+	if b.client == nil {
+		return 0
+	}
+	return b.client.Caches.GuildsLen()
+}
+
+func (b *Bot) UserCount() int {
+	if b.client == nil {
+		return 0
+	}
+	total := 0
+	for g := range b.client.Caches.Guilds() {
+		total += g.MemberCount
+	}
+	return total
 }
 
 func (b *Bot) StatusReport() StatusReport {
@@ -48,14 +68,19 @@ func (b *Bot) StatusReport() StatusReport {
 	sm := b.client.ShardManager
 	if sm == nil {
 		rep.ShardCount = 1
+		rep.Users = b.UserCount()
 		return rep
 	}
 
 	rep.ShardCount = b.ShardCount()
 
-	perShard := map[int]int{}
+	perGuilds := map[int]int{}
+	perUsers := map[int]int{}
 	for g := range b.client.Caches.Guilds() {
-		perShard[sharding.ShardIDByGuild(g.ID, rep.ShardCount)]++
+		sid := sharding.ShardIDByGuild(g.ID, rep.ShardCount)
+		perGuilds[sid]++
+		perUsers[sid] += g.MemberCount
+		rep.Users += g.MemberCount
 	}
 
 	degraded := false
@@ -65,7 +90,8 @@ func (b *Bot) StatusReport() StatusReport {
 			ID:        id,
 			State:     strings.ToLower(gw.Status().String()),
 			LatencyMs: gw.Latency().Milliseconds(),
-			Guilds:    perShard[id],
+			Guilds:    perGuilds[id],
+			Users:     perUsers[id],
 		}
 		b.shardMu.Lock()
 		if m := b.shardMeta[id]; m != nil {

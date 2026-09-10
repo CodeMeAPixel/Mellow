@@ -75,8 +75,8 @@ func infoCommands() []*Command {
 					return err
 				}
 				emb := infoEmbed("Community stats", "").
-					AddField("Users", fmt.Sprintf("%d", st.Users), true).
-					AddField("Servers", fmt.Sprintf("%d", st.Guilds), true).
+					AddField("Users", fmt.Sprintf("%d", c.Bot.UserCount()), true).
+					AddField("Servers", fmt.Sprintf("%d", c.Bot.GuildCount()), true).
 					AddField("Conversations", fmt.Sprintf("%d", st.Conversations), true).
 					AddField("Check-ins", fmt.Sprintf("%d", st.MoodCheckIns), true).
 					AddField("Crisis events", fmt.Sprintf("%d", st.CrisisEvents), true)

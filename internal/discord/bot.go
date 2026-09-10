@@ -162,26 +162,47 @@ func (b *Bot) Deploy(ctx context.Context) error {
 
 	force := os.Getenv("MELLOW_FORCE_DEPLOY") != ""
 	current, _ := b.client.Rest.GetGlobalCommands(appID, false)
+	if stale := staleNames(current, global); len(stale) > 0 {
+		slog.Info("wiping stale global commands", slog.Any("commands", stale))
+	}
 	if !force && sameCommandSet(current, global) {
-		slog.Info("global commands unchanged, skipping", slog.Int("count", len(global)))
+		slog.Info("global commands already in sync", slog.Int("count", len(global)))
 	} else {
 		if _, err := b.client.Rest.SetGlobalCommands(appID, global); err != nil {
 			return fmt.Errorf("set global commands: %w", err)
 		}
-		slog.Info("global commands registered", slog.Int("count", len(global)))
+		slog.Info("global commands synced (bulk overwrite)", slog.Int("now", len(global)), slog.Int("was", len(current)))
 	}
 
-	if len(private) > 0 && b.cfg.PrivateGuildID != "" {
+	if b.cfg.PrivateGuildID != "" {
 		gid, err := snowflake.Parse(b.cfg.PrivateGuildID)
 		if err != nil {
 			return fmt.Errorf("parse PRIVATE_GUILD_ID: %w", err)
 		}
+		guildCurrent, _ := b.client.Rest.GetGuildCommands(appID, gid, false)
+		if stale := staleNames(guildCurrent, private); len(stale) > 0 {
+			slog.Info("wiping stale private guild commands", slog.Any("commands", stale))
+		}
 		if _, err := b.client.Rest.SetGuildCommands(appID, gid, private); err != nil {
 			return fmt.Errorf("set guild commands: %w", err)
 		}
-		slog.Info("dev guild commands registered", slog.String("guild", b.cfg.PrivateGuildID), slog.Int("count", len(private)))
+		slog.Info("private guild commands synced (bulk overwrite)", slog.String("guild", b.cfg.PrivateGuildID), slog.Int("now", len(private)), slog.Int("was", len(guildCurrent)))
 	}
 	return nil
+}
+
+func staleNames(current []discord.ApplicationCommand, desired []discord.ApplicationCommandCreate) []string {
+	want := make(map[string]struct{}, len(desired))
+	for _, d := range desired {
+		want[fmt.Sprintf("%d\x00%s", d.Type(), d.CommandName())] = struct{}{}
+	}
+	var out []string
+	for _, c := range current {
+		if _, ok := want[fmt.Sprintf("%d\x00%s", c.Type(), c.Name())]; !ok {
+			out = append(out, c.Name())
+		}
+	}
+	return out
 }
 
 func commandKey(name, desc string, typ discord.ApplicationCommandType) string {
