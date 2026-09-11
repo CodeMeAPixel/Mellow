@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/disgoorg/disgo/discord"
+	"github.com/disgoorg/snowflake/v2"
 )
 
 func toolsCommands() []*Command {
@@ -34,6 +35,13 @@ func toolsCommands() []*Command {
 								{Name: "shutdown", Value: "shutdown"},
 							},
 						},
+					},
+				},
+				discord.ApplicationCommandOptionSubCommand{
+					Name: "grantplus", Description: "Grant or revoke a test Mellow+ entitlement. No payment involved.",
+					Options: []discord.ApplicationCommandOption{
+						discord.ApplicationCommandOptionUser{Name: "user", Description: "User to grant or revoke for", Required: true},
+						discord.ApplicationCommandOptionBool{Name: "revoke", Description: "Revoke instead of grant"},
 					},
 				},
 			},
@@ -104,6 +112,43 @@ func runTools(ctx context.Context, c *Ctx) error {
 			b.WriteString(line + "\n")
 		}
 		return c.Reply(infoEmbed("Recent internal logs", b.String()))
+	case "grantplus":
+		return runGrantPlus(ctx, c)
 	}
 	return c.ReplyEphemeral("Unknown subcommand.")
+}
+
+func runGrantPlus(ctx context.Context, c *Ctx) error {
+	if !c.Bot.billing.Enabled() {
+		return c.ReplyEphemeral("SKU_MELLOW_PLUS_ID isn't set, so there's no SKU to grant.")
+	}
+	target, ok := c.Data.OptUser("user")
+	if !ok {
+		return c.ReplyEphemeral("Specify a user.")
+	}
+	appID := c.Bot.client.ApplicationID
+	skuID := c.Bot.billing.PlusSKU()
+
+	if c.Bool("revoke") {
+		ent, err := c.Store.ActiveUserEntitlement(ctx, int64(target.ID), int64(skuID))
+		if err != nil {
+			return c.ReplyEphemeral(target.Username + " has no active Mellow+ entitlement to revoke.")
+		}
+		if err := c.Bot.client.Rest.DeleteTestEntitlement(appID, snowflake.ID(ent.ID)); err != nil {
+			return c.Reply(errorEmbed("Revoke failed", err.Error()))
+		}
+		_ = c.Bot.billing.Remove(ctx, snowflake.ID(ent.ID))
+		return c.Reply(successEmbed("Test entitlement revoked", "Mellow+ (test) revoked from "+target.Username+"."))
+	}
+
+	ent, err := c.Bot.client.Rest.CreateTestEntitlement(appID, discord.TestEntitlementCreate{
+		SkuID:     skuID,
+		OwnerID:   target.ID,
+		OwnerType: discord.EntitlementOwnerTypeUser,
+	})
+	if err != nil {
+		return c.Reply(errorEmbed("Grant failed", err.Error()))
+	}
+	_ = c.Bot.billing.Sync(ctx, *ent)
+	return c.Reply(successEmbed("Test entitlement granted", "Mellow+ (test) granted to "+target.Username+". Use `/tools grantplus revoke:true` to remove it."))
 }
