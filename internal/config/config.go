@@ -38,6 +38,8 @@ type Config struct {
 
 	OmniplexToken   string
 	OmniplexBaseURL string
+
+	SKUMellowPlus string
 }
 
 const defaultWebsite = "https://mellow.codemeapixel.dev"
@@ -96,6 +98,7 @@ func Load() (*Config, error) {
 	}
 	c.OmniplexToken = os.Getenv("OMNIPLEX_TOKEN")
 	c.OmniplexBaseURL = os.Getenv("OMNIPLEX_BASE_URL")
+	c.SKUMellowPlus = os.Getenv("SKU_MELLOW_PLUS_ID")
 
 	return c, nil
 }

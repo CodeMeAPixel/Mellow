@@ -150,13 +150,17 @@ func intensityOf(r gen.MoodCheckIn) int {
 }
 
 func runInsights(ctx context.Context, c *Ctx) error {
-	since := time.Now().AddDate(0, 0, -30)
+	days := 30
+	if c.HasPlus(ctx) {
+		days = 365
+	}
+	since := time.Now().AddDate(0, 0, -days)
 	rows, err := c.Store.MoodCheckInsSince(ctx, c.UserID, since)
 	if err != nil {
 		return err
 	}
 	if len(rows) == 0 {
-		return c.Reply(infoEmbed("Mood insights", "No check-ins in the last 30 days. Try /checkin to get started."))
+		return c.Reply(infoEmbed("Mood insights", fmt.Sprintf("No check-ins in the last %d days. Try /checkin to get started.", days)))
 	}
 
 	counts := map[string]int{}
@@ -179,7 +183,7 @@ func runInsights(ctx context.Context, c *Ctx) error {
 	sort.Slice(top, func(i, j int) bool { return top[i].v > top[j].v })
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "Check-ins in the last 30 days: **%d**\n", len(rows))
+	fmt.Fprintf(&b, "Check-ins in the last %d days: **%d**\n", days, len(rows))
 	if n > 0 {
 		fmt.Fprintf(&b, "Average intensity: **%.1f/5**\n", float64(sum)/float64(n))
 	}
@@ -194,6 +198,9 @@ func runInsights(ctx context.Context, c *Ctx) error {
 			emoji = "-"
 		}
 		fmt.Fprintf(&b, "%s %s x%d\n", emoji, t.k, t.v)
+	}
+	if days == 30 && c.Bot.billing.Enabled() {
+		b.WriteString("\nMellow+ shows a full year of history. See `/upgrade`.")
 	}
 	return c.Reply(infoEmbed("Mood insights", b.String()))
 }

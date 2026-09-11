@@ -1,0 +1,127 @@
+package gen
+
+import (
+	"context"
+	"time"
+)
+
+const activeGuildEntitlement = `-- name: ActiveGuildEntitlement :one
+SELECT id, "skuId", "applicationId", "userId", "guildId", type, consumed, deleted, "startsAt", "endsAt", "subscriptionId", "syncedAt" FROM "Entitlement"
+WHERE "guildId" = $1 AND "skuId" = $2 AND "deleted" = false
+  AND ("endsAt" IS NULL OR "endsAt" > CURRENT_TIMESTAMP)
+ORDER BY "id" DESC LIMIT 1
+`
+
+type ActiveGuildEntitlementParams struct {
+	GuildId *int64 `json:"guildId"`
+	SkuId   int64  `json:"skuId"`
+}
+
+func (q *Queries) ActiveGuildEntitlement(ctx context.Context, arg ActiveGuildEntitlementParams) (Entitlement, error) {
+	row := q.db.QueryRow(ctx, activeGuildEntitlement, arg.GuildId, arg.SkuId)
+	var i Entitlement
+	err := row.Scan(
+		&i.ID,
+		&i.SkuId,
+		&i.ApplicationId,
+		&i.UserId,
+		&i.GuildId,
+		&i.Type,
+		&i.Consumed,
+		&i.Deleted,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.SubscriptionId,
+		&i.SyncedAt,
+	)
+	return i, err
+}
+
+const activeUserEntitlement = `-- name: ActiveUserEntitlement :one
+SELECT id, "skuId", "applicationId", "userId", "guildId", type, consumed, deleted, "startsAt", "endsAt", "subscriptionId", "syncedAt" FROM "Entitlement"
+WHERE "userId" = $1 AND "skuId" = $2 AND "deleted" = false
+  AND ("endsAt" IS NULL OR "endsAt" > CURRENT_TIMESTAMP)
+ORDER BY "id" DESC LIMIT 1
+`
+
+type ActiveUserEntitlementParams struct {
+	UserId *int64 `json:"userId"`
+	SkuId  int64  `json:"skuId"`
+}
+
+func (q *Queries) ActiveUserEntitlement(ctx context.Context, arg ActiveUserEntitlementParams) (Entitlement, error) {
+	row := q.db.QueryRow(ctx, activeUserEntitlement, arg.UserId, arg.SkuId)
+	var i Entitlement
+	err := row.Scan(
+		&i.ID,
+		&i.SkuId,
+		&i.ApplicationId,
+		&i.UserId,
+		&i.GuildId,
+		&i.Type,
+		&i.Consumed,
+		&i.Deleted,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.SubscriptionId,
+		&i.SyncedAt,
+	)
+	return i, err
+}
+
+const markEntitlementDeleted = `-- name: MarkEntitlementDeleted :exec
+UPDATE "Entitlement" SET "deleted" = true, "syncedAt" = CURRENT_TIMESTAMP WHERE "id" = $1
+`
+
+func (q *Queries) MarkEntitlementDeleted(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markEntitlementDeleted, id)
+	return err
+}
+
+const upsertEntitlement = `-- name: UpsertEntitlement :exec
+INSERT INTO "Entitlement" ("id", "skuId", "applicationId", "userId", "guildId", "type", "consumed", "deleted", "startsAt", "endsAt", "subscriptionId")
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+ON CONFLICT ("id") DO UPDATE SET
+    "skuId" = EXCLUDED."skuId",
+    "applicationId" = EXCLUDED."applicationId",
+    "userId" = EXCLUDED."userId",
+    "guildId" = EXCLUDED."guildId",
+    "type" = EXCLUDED."type",
+    "consumed" = EXCLUDED."consumed",
+    "deleted" = EXCLUDED."deleted",
+    "startsAt" = EXCLUDED."startsAt",
+    "endsAt" = EXCLUDED."endsAt",
+    "subscriptionId" = EXCLUDED."subscriptionId",
+    "syncedAt" = CURRENT_TIMESTAMP
+`
+
+type UpsertEntitlementParams struct {
+	ID             int64      `json:"id"`
+	SkuId          int64      `json:"skuId"`
+	ApplicationId  int64      `json:"applicationId"`
+	UserId         *int64     `json:"userId"`
+	GuildId        *int64     `json:"guildId"`
+	Type           int32      `json:"type"`
+	Consumed       *bool      `json:"consumed"`
+	Deleted        bool       `json:"deleted"`
+	StartsAt       *time.Time `json:"startsAt"`
+	EndsAt         *time.Time `json:"endsAt"`
+	SubscriptionId *int64     `json:"subscriptionId"`
+}
+
+func (q *Queries) UpsertEntitlement(ctx context.Context, arg UpsertEntitlementParams) error {
+	_, err := q.db.Exec(ctx, upsertEntitlement,
+		arg.ID,
+		arg.SkuId,
+		arg.ApplicationId,
+		arg.UserId,
+		arg.GuildId,
+		arg.Type,
+		arg.Consumed,
+		arg.Deleted,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.SubscriptionId,
+	)
+	return err
+}

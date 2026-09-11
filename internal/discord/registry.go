@@ -17,5 +17,6 @@ func (b *Bot) buildRegistry() []*Command {
 	cmds = append(cmds, supportManageCommands()...)
 	cmds = append(cmds, toolsCommands()...)
 	cmds = append(cmds, changelogCommands()...)
+	cmds = append(cmds, upgradeCommand())
 	return cmds
 }

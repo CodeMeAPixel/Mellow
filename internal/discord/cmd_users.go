@@ -83,7 +83,7 @@ func userCommands() []*Command {
 		},
 		{
 			Name: "ghostletter", Description: "Write an unsent letter to get feelings out, or read your past ones.",
-			Category: "Coping", Cooldown: 8 * time.Second,
+			Category: "Coping", Cooldown: 8 * time.Second, PremiumCooldown: 4 * time.Second,
 			Options: []discord.ApplicationCommandOption{
 				discord.ApplicationCommandOptionString{Name: "write", Description: "The letter text"},
 			},
@@ -171,6 +171,9 @@ func runProfile(ctx context.Context, c *Ctx) error {
 	prefs, _ := c.Store.EnsureUserPreferences(ctx, c.UserID)
 
 	var b strings.Builder
+	if c.HasPlus(ctx) {
+		fmt.Fprintf(&b, "%s **Mellow+ supporter**\n\n", mellowEmoji("mellow"))
+	}
 	fmt.Fprintf(&b, "Check-ins: **%d**\n", counts.CheckIns)
 	fmt.Fprintf(&b, "Journal entries: **%d**\n", counts.Journal)
 	fmt.Fprintf(&b, "Gratitude notes: **%d**\n", counts.Gratitude)

@@ -58,7 +58,7 @@ func copingCommand() *Command {
 
 	return &Command{
 		Name: "coping", Description: "Coping tools and exercises for your wellbeing.",
-		Category: "Coping", Cooldown: 6 * time.Second,
+		Category: "Coping", Cooldown: 6 * time.Second, PremiumCooldown: 3 * time.Second,
 		Options: opts,
 		Run:     runCoping,
 	}

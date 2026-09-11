@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/CodeMeAPixel/Mellow/internal/ai"
+	"github.com/CodeMeAPixel/Mellow/internal/billing"
 	"github.com/CodeMeAPixel/Mellow/internal/config"
 	"github.com/CodeMeAPixel/Mellow/internal/db"
 	"github.com/CodeMeAPixel/Mellow/internal/github"
@@ -36,6 +37,7 @@ type Bot struct {
 	syslog   *syslog.Logger
 	omni     *omniplex.Client
 	gh       *github.Client
+	billing  *billing.Service
 	client   *bot.Client
 	commands map[string]*Command
 	cooldns  map[string]time.Time
@@ -65,6 +67,7 @@ func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Lo
 		syslog:    sl,
 		omni:      omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID),
 		gh:        github.New(cfg.GitHubRepo, cfg.GitHubToken),
+		billing:   billing.New(store, cfg.SKUMellowPlus),
 		commands:  map[string]*Command{},
 		cooldns:   map[string]time.Time{},
 		games:     map[string]*wordGame{},
@@ -106,6 +109,9 @@ func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Lo
 		bot.WithEventListenerFunc(b.onGuildReady),
 		bot.WithEventListenerFunc(b.onGuildJoin),
 		bot.WithEventListenerFunc(b.onGuildLeave),
+		bot.WithEventListenerFunc(b.onEntitlementCreate),
+		bot.WithEventListenerFunc(b.onEntitlementUpdate),
+		bot.WithEventListenerFunc(b.onEntitlementDelete),
 	)
 	if err != nil {
 		return nil, err
@@ -364,7 +370,11 @@ func (b *Bot) onInteraction(e *events.ApplicationCommandInteractionCreate) {
 		}
 	}
 
-	if cmd.Cooldown > 0 {
+	cooldown := cmd.Cooldown
+	if cmd.PremiumCooldown > 0 && b.billing.HasPlusFrom(e.Entitlements()) {
+		cooldown = cmd.PremiumCooldown
+	}
+	if cooldown > 0 {
 		key := cmd.Name + ":" + strconv.FormatInt(userID, 10)
 		if until, active := b.cooldns[key]; active && time.Now().Before(until) {
 			wait := time.Until(until).Round(time.Second)
@@ -374,7 +384,7 @@ func (b *Bot) onInteraction(e *events.ApplicationCommandInteractionCreate) {
 			})
 			return
 		}
-		b.cooldns[key] = time.Now().Add(cmd.Cooldown)
+		b.cooldns[key] = time.Now().Add(cooldown)
 	}
 
 	c := &Ctx{Event: e, Data: data, Store: b.store, AI: b.ai, Bot: b, UserID: userID, GuildID: guildID}

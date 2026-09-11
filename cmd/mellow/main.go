@@ -158,6 +158,7 @@ func main() {
 	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, b.ShardCount, b.GuildCount, b.UserCount).Run(ctx)
 	go b.SweepGames(ctx)
 	go b.RunGuildSync(ctx)
+	go b.RunEntitlementSync(ctx)
 	go b.CheckForUpdates(ctx)
 
 	omni := omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID)

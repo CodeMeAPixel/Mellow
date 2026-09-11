@@ -12,17 +12,18 @@ import (
 )
 
 type Command struct {
-	Name          string
-	Description   string
-	Category      string
-	Cooldown      time.Duration
-	GuildOnly     bool
-	Private       bool
-	OwnerOnly     bool
-	RequiredRoles []string
-	RequiredPerms []discord.Permissions
-	Options       []discord.ApplicationCommandOption
-	Run           func(ctx context.Context, c *Ctx) error
+	Name            string
+	Description     string
+	Category        string
+	Cooldown        time.Duration
+	PremiumCooldown time.Duration
+	GuildOnly       bool
+	Private         bool
+	OwnerOnly       bool
+	RequiredRoles   []string
+	RequiredPerms   []discord.Permissions
+	Options         []discord.ApplicationCommandOption
+	Run             func(ctx context.Context, c *Ctx) error
 }
 
 func (c Command) create() discord.ApplicationCommandCreate {
@@ -62,6 +63,14 @@ func (c *Ctx) Sub() string {
 func (c *Ctx) String(name string) string   { v, _ := c.Data.OptString(name); return v }
 func (c *Ctx) Int(name string) (int, bool) { return c.Data.OptInt(name) }
 func (c *Ctx) Bool(name string) bool       { v, _ := c.Data.OptBool(name); return v }
+
+func (c *Ctx) HasPlus(ctx context.Context) bool {
+	if c.Bot.billing.HasPlusFrom(c.Event.Entitlements()) {
+		return true
+	}
+	has, _ := c.Bot.billing.HasPlusUser(ctx, c.UserID)
+	return has
+}
 
 func (c *Ctx) Defer(ephemeral bool) error {
 	c.deferred = true

@@ -844,3 +844,21 @@ func (s *Store) RecentSystemLogs(ctx context.Context, logType *string, limit int
 	rows, err := s.q.RecentSystemLogs(ctx, gen.RecentSystemLogsParams{Limit: limit, LogType: logType})
 	return rows, norm(err)
 }
+
+func (s *Store) UpsertEntitlement(ctx context.Context, e gen.UpsertEntitlementParams) error {
+	return s.q.UpsertEntitlement(ctx, e)
+}
+
+func (s *Store) MarkEntitlementDeleted(ctx context.Context, id int64) error {
+	return s.q.MarkEntitlementDeleted(ctx, id)
+}
+
+func (s *Store) ActiveUserEntitlement(ctx context.Context, userID, skuID int64) (gen.Entitlement, error) {
+	e, err := s.q.ActiveUserEntitlement(ctx, gen.ActiveUserEntitlementParams{UserId: &userID, SkuId: skuID})
+	return e, norm(err)
+}
+
+func (s *Store) ActiveGuildEntitlement(ctx context.Context, guildID, skuID int64) (gen.Entitlement, error) {
+	e, err := s.q.ActiveGuildEntitlement(ctx, gen.ActiveGuildEntitlementParams{GuildId: &guildID, SkuId: skuID})
+	return e, norm(err)
+}

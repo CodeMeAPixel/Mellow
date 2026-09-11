@@ -18,7 +18,7 @@ func funCommands() []*Command {
 	}
 	mk := func(name, kind, desc string) *Command {
 		return &Command{
-			Name: name, Description: desc, Category: "Fun", Cooldown: 5 * time.Second,
+			Name: name, Description: desc, Category: "Fun", Cooldown: 5 * time.Second, PremiumCooldown: 2 * time.Second,
 			Options: []discord.ApplicationCommandOption{
 				discord.ApplicationCommandOptionString{Name: "topic", Description: "Optional topic"},
 			},

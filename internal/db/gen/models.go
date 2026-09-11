@@ -41,6 +41,21 @@ type CrisisEvent struct {
 	Escalated  bool      `json:"escalated"`
 }
 
+type Entitlement struct {
+	ID             int64      `json:"id"`
+	SkuId          int64      `json:"skuId"`
+	ApplicationId  int64      `json:"applicationId"`
+	UserId         *int64     `json:"userId"`
+	GuildId        *int64     `json:"guildId"`
+	Type           int32      `json:"type"`
+	Consumed       *bool      `json:"consumed"`
+	Deleted        bool       `json:"deleted"`
+	StartsAt       *time.Time `json:"startsAt"`
+	EndsAt         *time.Time `json:"endsAt"`
+	SubscriptionId *int64     `json:"subscriptionId"`
+	SyncedAt       time.Time  `json:"syncedAt"`
+}
+
 type FavoriteCopingTool struct {
 	ID     int32  `json:"id"`
 	UserId int64  `json:"userId"`
