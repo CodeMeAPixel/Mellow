@@ -91,6 +91,9 @@ func Load() (*Config, error) {
 	c.StatusAPIURL = firstNonEmpty(os.Getenv("STATUS_API_URL"), c.WebsiteURL+"/api/status")
 	c.GitHubToken = os.Getenv("GITHUB_TOKEN")
 	c.GitHubRepo = firstNonEmpty(os.Getenv("GITHUB_REPO"), repoFromURL(c.SourceURL), "CodeMeAPixel/Mellow")
+	if stripped := repoFromURL(c.GitHubRepo); stripped != "" {
+		c.GitHubRepo = stripped
+	}
 	c.OmniplexToken = os.Getenv("OMNIPLEX_TOKEN")
 	c.OmniplexBaseURL = os.Getenv("OMNIPLEX_BASE_URL")
 

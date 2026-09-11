@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,12 @@ type Client struct {
 }
 
 func New(repo, token string) *Client {
+	for _, p := range []string{"https://github.com/", "http://github.com/", "github.com/"} {
+		if strings.HasPrefix(repo, p) {
+			repo = strings.TrimSuffix(strings.TrimPrefix(repo, p), ".git")
+			break
+		}
+	}
 	if repo == "" {
 		repo = "CodeMeAPixel/Mellow"
 	}

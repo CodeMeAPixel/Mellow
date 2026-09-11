@@ -31,23 +31,21 @@ var version = "dev"
 
 var bareRev = regexp.MustCompile(`^[0-9a-f]{7,40}(-dirty)?$`)
 
-func vcsRevision() (hash string, dirty bool) {
+func vcsRevision() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "", false
+		return ""
 	}
+	var hash string
 	for _, s := range info.Settings {
-		switch s.Key {
-		case "vcs.revision":
+		if s.Key == "vcs.revision" {
 			hash = s.Value
-		case "vcs.modified":
-			dirty = s.Value == "true"
 		}
 	}
 	if len(hash) > 7 {
 		hash = hash[:7]
 	}
-	return hash, dirty
+	return hash
 }
 
 func latestTag(ctx context.Context, cfg *config.Config) string {
@@ -56,9 +54,13 @@ func latestTag(ctx context.Context, cfg *config.Config) string {
 	gh := github.New(cfg.GitHubRepo, cfg.GitHubToken)
 	if rel, err := gh.LatestRelease(tctx); err == nil && rel.TagName != "" {
 		return rel.TagName
+	} else if err != nil {
+		slog.Warn("latest release lookup failed", slog.String("err", err.Error()))
 	}
 	if tag, err := gh.LatestTag(tctx); err == nil && tag != "" {
 		return tag
+	} else if err != nil {
+		slog.Warn("latest tag lookup failed", slog.String("err", err.Error()))
 	}
 	return ""
 }
@@ -74,21 +76,14 @@ func resolveVersion(ctx context.Context, cfg *config.Config) string {
 		tag = latestTag(ctx, cfg)
 	}
 
-	hash, dirty := vcsRevision()
+	hash := vcsRevision()
 
 	switch {
 	case tag != "" && hash != "":
-		v := tag + "-" + hash
-		if dirty {
-			v += "-dirty"
-		}
-		return v
+		return tag + "-" + hash
 	case tag != "":
 		return tag
 	case hash != "":
-		if dirty {
-			return hash + "-dirty"
-		}
 		return hash
 	default:
 		return "dev"
