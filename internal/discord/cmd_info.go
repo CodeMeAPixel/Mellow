@@ -103,14 +103,18 @@ func SetVersion(v string) {
 
 func Version() string { return buildVersion }
 
+func runningRelease(running, tag string) bool {
+	running = strings.TrimPrefix(running, "v")
+	tag = strings.TrimPrefix(tag, "v")
+	return running == tag || strings.HasPrefix(running, tag+"-")
+}
+
 func (b *Bot) CheckForUpdates(ctx context.Context) {
 	rel, err := b.gh.LatestRelease(ctx)
 	if err != nil || rel.TagName == "" {
 		return
 	}
-	latest := strings.TrimPrefix(rel.TagName, "v")
-	running := strings.TrimPrefix(buildVersion, "v")
-	if running == latest || running == "dev" {
+	if buildVersion == "dev" || runningRelease(buildVersion, rel.TagName) {
 		return
 	}
 	b.syslog.Event(ctx, "system", "Update available",
@@ -120,9 +124,7 @@ func (b *Bot) CheckForUpdates(ctx context.Context) {
 func (b *Bot) versionText(ctx context.Context) string {
 	lines := []string{"Running: **" + buildVersion + "**", "Go " + runtime.Version()}
 	if rel, err := b.gh.LatestRelease(ctx); err == nil && rel.TagName != "" {
-		latest := strings.TrimPrefix(rel.TagName, "v")
-		running := strings.TrimPrefix(buildVersion, "v")
-		if running == latest {
+		if runningRelease(buildVersion, rel.TagName) {
 			lines = append(lines, "Up to date with the latest release ("+rel.TagName+").")
 		} else {
 			lines = append(lines, "Latest release: **"+rel.TagName+"** — "+rel.HTMLURL)
