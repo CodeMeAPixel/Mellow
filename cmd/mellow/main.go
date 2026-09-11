@@ -31,41 +31,26 @@ var version = "dev"
 
 var bareRev = regexp.MustCompile(`^[0-9a-f]{7,40}(-dirty)?$`)
 
-func vcsRevision() string {
+func vcsRevision() (hash string, dirty bool) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return ""
+		return "", false
 	}
-	var rev string
-	var dirty bool
 	for _, s := range info.Settings {
 		switch s.Key {
 		case "vcs.revision":
-			rev = s.Value
+			hash = s.Value
 		case "vcs.modified":
 			dirty = s.Value == "true"
 		}
 	}
-	if rev == "" {
-		return ""
+	if len(hash) > 7 {
+		hash = hash[:7]
 	}
-	if len(rev) > 12 {
-		rev = rev[:12]
-	}
-	if dirty {
-		rev += "-dirty"
-	}
-	return rev
+	return hash, dirty
 }
 
-func resolveVersion(ctx context.Context, cfg *config.Config) string {
-	if version != "" && version != "dev" && !bareRev.MatchString(version) {
-		return version
-	}
-	if v := os.Getenv("VERSION"); v != "" {
-		return v
-	}
-
+func latestTag(ctx context.Context, cfg *config.Config) string {
 	tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	gh := github.New(cfg.GitHubRepo, cfg.GitHubToken)
@@ -75,14 +60,39 @@ func resolveVersion(ctx context.Context, cfg *config.Config) string {
 	if tag, err := gh.LatestTag(tctx); err == nil && tag != "" {
 		return tag
 	}
+	return ""
+}
 
-	if version != "" && version != "dev" {
-		return version
+func resolveVersion(ctx context.Context, cfg *config.Config) string {
+	tag := ""
+	switch {
+	case version != "" && version != "dev" && !bareRev.MatchString(version):
+		tag = version
+	case os.Getenv("VERSION") != "":
+		tag = os.Getenv("VERSION")
+	default:
+		tag = latestTag(ctx, cfg)
 	}
-	if rev := vcsRevision(); rev != "" {
-		return rev
+
+	hash, dirty := vcsRevision()
+
+	switch {
+	case tag != "" && hash != "":
+		v := tag + "-" + hash
+		if dirty {
+			v += "-dirty"
+		}
+		return v
+	case tag != "":
+		return tag
+	case hash != "":
+		if dirty {
+			return hash + "-dirty"
+		}
+		return hash
+	default:
+		return "dev"
 	}
-	return "dev"
 }
 
 func main() {

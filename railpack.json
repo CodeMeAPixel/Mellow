@@ -4,7 +4,7 @@
   "steps": {
     "build": {
       "commands": [
-        "go build -trimpath -ldflags=-X=main.version=$(git describe --tags --always --dirty 2>/dev/null || echo dev) -o bin/mellow ./cmd/mellow"
+        "go build -trimpath -o bin/mellow ./cmd/mellow"
       ]
     }
   },
