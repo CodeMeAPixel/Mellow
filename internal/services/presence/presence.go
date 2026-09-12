@@ -2,6 +2,7 @@ package presence
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/disgoorg/disgo/bot"
@@ -17,13 +18,30 @@ var activities = []string{
 }
 
 func Run(ctx context.Context, client *bot.Client) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(10 * time.Second):
+	}
+
 	i := 0
 	apply := func() {
-		_ = client.SetPresence(ctx,
-			gateway.WithListeningActivity(activities[i%len(activities)]),
-			gateway.WithOnlineStatus(discord.OnlineStatusOnline),
-		)
+		if client.ShardManager == nil {
+			return
+		}
+		activity := activities[i%len(activities)]
 		i++
+		for gw := range client.ShardManager.Shards() {
+			if gw.Status() != gateway.StatusReady {
+				continue
+			}
+			if err := client.SetPresenceForShard(ctx, gw.ShardID(),
+				gateway.WithListeningActivity(activity),
+				gateway.WithOnlineStatus(discord.OnlineStatusOnline),
+			); err != nil {
+				slog.Warn("set presence failed", slog.Int("shard", gw.ShardID()), slog.String("err", err.Error()))
+			}
+		}
 	}
 	apply()
 
