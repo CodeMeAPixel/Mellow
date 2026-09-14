@@ -48,8 +48,9 @@ type Bot struct {
 
 	readyShards sync.Map
 
-	shardMu   sync.Mutex
-	shardMeta map[int]*shardInfo
+	shardMu        sync.Mutex
+	shardMeta      map[int]*shardInfo
+	latencyPolling sync.Map
 }
 
 type shardInfo struct {
@@ -57,6 +58,8 @@ type shardInfo struct {
 	lastDisconnect time.Time
 	resumes        int
 	disconnects    int
+	state          string
+	latencyMs      int64
 }
 
 func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Logger) (*Bot, error) {
@@ -250,7 +253,10 @@ func (b *Bot) onReady(e *events.Ready) {
 		setBrand(br)
 	}
 
-	b.markShard(shardID, func(m *shardInfo) { m.lastReady = time.Now() })
+	b.markShard(shardID, func(m *shardInfo) {
+		m.lastReady = time.Now()
+		m.state = "ready"
+	})
 
 	ctx := context.Background()
 	if _, seen := b.readyShards.LoadOrStore(shardID, true); seen {
@@ -262,7 +268,10 @@ func (b *Bot) onReady(e *events.Ready) {
 
 func (b *Bot) onResumed(e *events.Resumed) {
 	slog.Info("gateway resumed", slog.Int("shard", e.ShardID()))
-	b.markShard(e.ShardID(), func(m *shardInfo) { m.resumes++ })
+	b.markShard(e.ShardID(), func(m *shardInfo) {
+		m.resumes++
+		m.state = "ready"
+	})
 	b.syslog.Shard(context.Background(), e.ShardID(), "resumed", "The existing session was resumed after a brief drop.", "info")
 }
 
@@ -289,12 +298,15 @@ func (b *Bot) onShardClose(gw gateway.Gateway, err error, reconnect bool) {
 		msg = err.Error()
 	}
 	sev := "error"
+	state := "disconnected"
 	if reconnect {
 		sev = "warning"
+		state = "reconnecting"
 	}
 	b.markShard(gw.ShardID(), func(m *shardInfo) {
 		m.disconnects++
 		m.lastDisconnect = time.Now()
+		m.state = state
 	})
 	slog.Warn("shard closed", slog.Int("shard", gw.ShardID()), slog.String("err", msg), slog.Bool("reconnect", reconnect))
 	b.syslog.Shard(context.Background(), gw.ShardID(), "disconnected", msg, sev)

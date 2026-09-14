@@ -1,8 +1,8 @@
 package discord
 
 import (
+	"context"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/disgoorg/disgo/gateway"
@@ -51,13 +51,18 @@ func (b *Bot) UserCount() int {
 	return total
 }
 
-func (b *Bot) readShardMeta(id int) (lastReady, lastDisconnect string, resumes, disconnects int) {
+func (b *Bot) readShardMeta(id int) (state string, latencyMs int64, lastReady, lastDisconnect string, resumes, disconnects int) {
 	b.shardMu.Lock()
 	defer b.shardMu.Unlock()
 	m := b.shardMeta[id]
 	if m == nil {
-		return
+		return "unknown", 0, "", "", 0, 0
 	}
+	state = m.state
+	if state == "" {
+		state = "unknown"
+	}
+	latencyMs = m.latencyMs
 	if !m.lastReady.IsZero() {
 		lastReady = m.lastReady.UTC().Format(time.RFC3339)
 	}
@@ -67,6 +72,45 @@ func (b *Bot) readShardMeta(id int) (lastReady, lastDisconnect string, resumes, 
 	resumes = m.resumes
 	disconnects = m.disconnects
 	return
+}
+
+func (b *Bot) pollShardLatency() {
+	if b.client == nil || b.client.ShardManager == nil {
+		return
+	}
+	for gw := range b.client.ShardManager.Shards() {
+		id := gw.ShardID()
+		if _, already := b.latencyPolling.LoadOrStore(id, true); already {
+			continue
+		}
+		go func(gw gateway.Gateway, id int) {
+			defer b.latencyPolling.Delete(id)
+			latency := gw.Latency().Milliseconds()
+			status := gw.Status()
+			b.markShard(id, func(m *shardInfo) {
+				m.latencyMs = latency
+				if status == gateway.StatusReady {
+					m.state = "ready"
+				} else {
+					m.state = "connecting"
+				}
+			})
+		}(gw, id)
+	}
+}
+
+func (b *Bot) RunShardLatencyPoll(ctx context.Context) {
+	b.pollShardLatency()
+	t := time.NewTicker(15 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			b.pollShardLatency()
+		}
+	}
 }
 
 func (b *Bot) StatusReport() StatusReport {
@@ -107,14 +151,12 @@ func (b *Bot) StatusReport() StatusReport {
 	for gw := range sm.Shards() {
 		id := gw.ShardID()
 		s := ShardStatus{
-			ID:        id,
-			State:     strings.ToLower(gw.Status().String()),
-			LatencyMs: gw.Latency().Milliseconds(),
-			Guilds:    perGuilds[id],
-			Users:     perUsers[id],
+			ID:     id,
+			Guilds: perGuilds[id],
+			Users:  perUsers[id],
 		}
-		s.LastReady, s.LastDisconnect, s.Resumes, s.Disconnects = b.readShardMeta(id)
-		if gw.Status() != gateway.StatusReady {
+		s.State, s.LatencyMs, s.LastReady, s.LastDisconnect, s.Resumes, s.Disconnects = b.readShardMeta(id)
+		if s.State != "ready" {
 			degraded = true
 		}
 		rep.Shards = append(rep.Shards, s)

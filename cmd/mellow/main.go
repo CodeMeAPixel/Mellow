@@ -159,6 +159,7 @@ func main() {
 	go b.SweepGames(ctx)
 	go b.RunGuildSync(ctx)
 	go b.RunEntitlementSync(ctx)
+	go b.RunShardLatencyPoll(ctx)
 	go b.CheckForUpdates(ctx)
 
 	omni := omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID)
