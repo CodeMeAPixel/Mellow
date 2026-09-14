@@ -452,9 +452,19 @@ func (b *Bot) checkRole(ctx context.Context, userID int64, required []string) (b
 }
 
 func (b *Bot) SyncGuilds(ctx context.Context) {
-	synced := 0
+	type guildRef struct {
+		id      int64
+		name    string
+		ownerID int64
+	}
+	var guilds []guildRef
 	for g := range b.client.Caches.Guilds() {
-		if _, err := b.store.UpsertGuild(ctx, int64(g.ID), g.Name, int64(g.OwnerID)); err == nil {
+		guilds = append(guilds, guildRef{int64(g.ID), g.Name, int64(g.OwnerID)})
+	}
+
+	synced := 0
+	for _, g := range guilds {
+		if _, err := b.store.UpsertGuild(ctx, g.id, g.name, g.ownerID); err == nil {
 			synced++
 		}
 	}
