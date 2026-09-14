@@ -88,7 +88,14 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "status unavailable"})
 		return
 	}
-	writeJSON(w, http.StatusOK, s.statusFn())
+	ch := make(chan any, 1)
+	go func() { ch <- s.statusFn() }()
+	select {
+	case v := <-ch:
+		writeJSON(w, http.StatusOK, v)
+	case <-time.After(5 * time.Second):
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "status computation timed out"})
+	}
 }
 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {

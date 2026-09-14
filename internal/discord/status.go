@@ -51,6 +51,24 @@ func (b *Bot) UserCount() int {
 	return total
 }
 
+func (b *Bot) readShardMeta(id int) (lastReady, lastDisconnect string, resumes, disconnects int) {
+	b.shardMu.Lock()
+	defer b.shardMu.Unlock()
+	m := b.shardMeta[id]
+	if m == nil {
+		return
+	}
+	if !m.lastReady.IsZero() {
+		lastReady = m.lastReady.UTC().Format(time.RFC3339)
+	}
+	if !m.lastDisconnect.IsZero() {
+		lastDisconnect = m.lastDisconnect.UTC().Format(time.RFC3339)
+	}
+	resumes = m.resumes
+	disconnects = m.disconnects
+	return
+}
+
 func (b *Bot) StatusReport() StatusReport {
 	now := time.Now().UTC()
 	rep := StatusReport{
@@ -95,18 +113,7 @@ func (b *Bot) StatusReport() StatusReport {
 			Guilds:    perGuilds[id],
 			Users:     perUsers[id],
 		}
-		b.shardMu.Lock()
-		if m := b.shardMeta[id]; m != nil {
-			if !m.lastReady.IsZero() {
-				s.LastReady = m.lastReady.UTC().Format(time.RFC3339)
-			}
-			if !m.lastDisconnect.IsZero() {
-				s.LastDisconnect = m.lastDisconnect.UTC().Format(time.RFC3339)
-			}
-			s.Resumes = m.resumes
-			s.Disconnects = m.disconnects
-		}
-		b.shardMu.Unlock()
+		s.LastReady, s.LastDisconnect, s.Resumes, s.Disconnects = b.readShardMeta(id)
 		if gw.Status() != gateway.StatusReady {
 			degraded = true
 		}
