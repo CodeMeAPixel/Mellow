@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/CodeMeAPixel/Mellow/internal/ai"
@@ -51,6 +52,8 @@ type Bot struct {
 	shardMu        sync.Mutex
 	shardMeta      map[int]*shardInfo
 	latencyPolling sync.Map
+
+	statusCache atomic.Pointer[StatusReport]
 }
 
 type shardInfo struct {

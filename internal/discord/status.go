@@ -114,6 +114,32 @@ func (b *Bot) RunShardLatencyPoll(ctx context.Context) {
 }
 
 func (b *Bot) StatusReport() StatusReport {
+	if cached := b.statusCache.Load(); cached != nil {
+		return *cached
+	}
+	return b.computeStatusReport()
+}
+
+func (b *Bot) RunStatusRefresh(ctx context.Context) {
+	refresh := func() {
+		rep := b.computeStatusReport()
+		b.statusCache.Store(&rep)
+	}
+	refresh()
+
+	t := time.NewTicker(10 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			refresh()
+		}
+	}
+}
+
+func (b *Bot) computeStatusReport() StatusReport {
 	now := time.Now().UTC()
 	rep := StatusReport{
 		Status:        "ok",
