@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,6 +30,7 @@ func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn 
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(requestLogger)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(rateLimit(60, time.Minute))
 
@@ -79,6 +81,22 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(ww, r)
+		slog.Info("http request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.String("remote", r.RemoteAddr),
+			slog.String("agent", r.UserAgent()),
+			slog.Int("status", ww.Status()),
+			slog.Duration("duration", time.Since(start)),
+		)
+	})
+}
+
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -94,6 +112,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	case v := <-ch:
 		writeJSON(w, http.StatusOK, v)
 	case <-time.After(5 * time.Second):
+		slog.Warn("status computation timed out")
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "status computation timed out"})
 	}
 }
