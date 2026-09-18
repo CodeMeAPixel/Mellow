@@ -15,6 +15,8 @@ import (
 // same first activity - otherwise a shard shows no activity at all from the
 // moment it (re)identifies until the next Run tick, up to 5 minutes later.
 var Activities = []string{
+	"mymellow.xyz",
+	"docs.mymellow.xyz",
 	"with your wellbeing in mind",
 	"/checkin for a mood check",
 	"here whenever you need to talk",
