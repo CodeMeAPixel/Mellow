@@ -15,7 +15,7 @@ func infoCommands() []*Command {
 			Cooldown: 5 * time.Second,
 			Run: func(ctx context.Context, c *Ctx) error {
 				up := time.Since(c.Bot.StartedAt()).Round(time.Second)
-				emb := infoEmbed("Pong", fmt.Sprintf("Uptime: %s\nGoroutines: %d", up, runtime.NumGoroutine()))
+				emb := infoEmbed("Pong", fmt.Sprintf("Uptime: %s\nRestarts: %d\nGoroutines: %d", up, c.Bot.RestartCount(), runtime.NumGoroutine()))
 				return c.Reply(emb)
 			},
 		},

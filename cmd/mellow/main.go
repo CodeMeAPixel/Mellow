@@ -139,6 +139,10 @@ func main() {
 	}
 	sl.SetSender(b)
 
+	if err := b.RecordStart(ctx); err != nil {
+		slog.Warn("record bot start failed", slog.String("err", err.Error()))
+	}
+
 	if err := b.Open(ctx); err != nil {
 		slog.Error("gateway open", slog.String("err", err.Error()))
 		os.Exit(1)
@@ -155,7 +159,7 @@ func main() {
 
 	go reminder.New(b.Client(), store).Run(ctx)
 	go presence.Run(ctx, b.Client())
-	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, b.ShardCount, b.GuildCount, b.UserCount).Run(ctx)
+	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, b.ShardCount, b.GuildCount, b.UserCount, b.UptimeSeconds, b.RestartCount).Run(ctx)
 	go b.SweepGames(ctx)
 	go b.RunGuildSync(ctx)
 	go b.RunEntitlementSync(ctx)

@@ -16,11 +16,13 @@ type Service struct {
 	shards  func() int
 	guilds  func() int
 	users   func() int
+	uptime  func() int64
+	restart func() int64
 	client  *http.Client
 	every   time.Duration
 }
 
-func New(url, key, version string, shards, guilds, users func() int) *Service {
+func New(url, key, version string, shards, guilds, users func() int, uptime, restart func() int64) *Service {
 	if shards == nil {
 		shards = func() int { return 1 }
 	}
@@ -30,6 +32,12 @@ func New(url, key, version string, shards, guilds, users func() int) *Service {
 	if users == nil {
 		users = func() int { return 0 }
 	}
+	if uptime == nil {
+		uptime = func() int64 { return 0 }
+	}
+	if restart == nil {
+		restart = func() int64 { return 0 }
+	}
 	return &Service{
 		url:     url,
 		key:     key,
@@ -37,6 +45,8 @@ func New(url, key, version string, shards, guilds, users func() int) *Service {
 		shards:  shards,
 		guilds:  guilds,
 		users:   users,
+		uptime:  uptime,
+		restart: restart,
 		client:  &http.Client{Timeout: 20 * time.Second},
 		every:   5 * time.Minute,
 	}
@@ -66,26 +76,30 @@ func (s *Service) Run(ctx context.Context) {
 }
 
 type payload struct {
-	Status     bool   `json:"status"`
-	ShardCount int    `json:"shardCount"`
-	GuildCount int    `json:"guildCount"`
-	UserCount  int    `json:"userCount"`
-	Version    string `json:"version"`
-	Message    string `json:"message"`
-	Timestamp  string `json:"timestamp"`
-	APIKey     string `json:"apiKey"`
+	Status        bool   `json:"status"`
+	ShardCount    int    `json:"shardCount"`
+	GuildCount    int    `json:"guildCount"`
+	UserCount     int    `json:"userCount"`
+	UptimeSeconds int64  `json:"uptimeSeconds"`
+	RestartCount  int64  `json:"restartCount"`
+	Version       string `json:"version"`
+	Message       string `json:"message"`
+	Timestamp     string `json:"timestamp"`
+	APIKey        string `json:"apiKey"`
 }
 
 func (s *Service) post(ctx context.Context) {
 	body, _ := json.Marshal(payload{
-		Status:     true,
-		ShardCount: s.shards(),
-		GuildCount: s.guilds(),
-		UserCount:  s.users(),
-		Version:    s.version,
-		Message:    "All systems operational",
-		Timestamp:  time.Now().UTC().Format(time.RFC3339),
-		APIKey:     s.key,
+		Status:        true,
+		ShardCount:    s.shards(),
+		GuildCount:    s.guilds(),
+		UserCount:     s.users(),
+		UptimeSeconds: s.uptime(),
+		RestartCount:  s.restart(),
+		Version:       s.version,
+		Message:       "All systems operational",
+		Timestamp:     time.Now().UTC().Format(time.RFC3339),
+		APIKey:        s.key,
 	})
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url, bytes.NewReader(body))

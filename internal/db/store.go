@@ -450,6 +450,26 @@ func (s *Store) CommunityStats(ctx context.Context) (Stats, error) {
 	return st, nil
 }
 
+type RuntimeInfo struct {
+	RestartCount   int64
+	FirstStartedAt time.Time
+	LastStartedAt  time.Time
+}
+
+// RecordBotStart marks a process boot: increments the persistent restart
+// counter and returns it along with when the bot was first ever started.
+func (s *Store) RecordBotStart(ctx context.Context) (RuntimeInfo, error) {
+	rt, err := s.q.RecordBotStart(ctx)
+	if err != nil {
+		return RuntimeInfo{}, norm(err)
+	}
+	return RuntimeInfo{
+		RestartCount:   rt.RestartCount,
+		FirstStartedAt: rt.FirstStartedAt,
+		LastStartedAt:  rt.LastStartedAt,
+	}, nil
+}
+
 type NewSystemLog struct {
 	GuildID     *int64
 	UserID      *int64

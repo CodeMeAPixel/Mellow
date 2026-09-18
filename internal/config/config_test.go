@@ -6,22 +6,22 @@ func TestWebsiteDefaultsAndDerivation(t *testing.T) {
 	t.Setenv("TOKEN", "x")
 	t.Setenv("CLIENT_ID", "x")
 	t.Setenv("DATABASE_URL", "postgres://x")
-	t.Setenv("WEBSITE_URL", "https://mellow.codemeapixel.dev/")
+	t.Setenv("WEBSITE_URL", "https://mymellow.xyz/")
 
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.WebsiteURL != "https://mellow.codemeapixel.dev" {
+	if c.WebsiteURL != "https://mymellow.xyz" {
 		t.Errorf("website = %q", c.WebsiteURL)
 	}
-	if c.DocsURL != "https://mellow.codemeapixel.dev/docs" {
+	if c.DocsURL != "https://mymellow.xyz/docs" {
 		t.Errorf("docs = %q", c.DocsURL)
 	}
-	if c.SupportURL != "https://mellow.codemeapixel.dev/support" {
+	if c.SupportURL != "https://mymellow.xyz/support" {
 		t.Errorf("support = %q", c.SupportURL)
 	}
-	if c.InviteURL != "https://mellow.codemeapixel.dev/invite" {
+	if c.InviteURL != "https://mymellow.xyz/invite" {
 		t.Errorf("invite = %q", c.InviteURL)
 	}
 }

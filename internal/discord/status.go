@@ -22,15 +22,17 @@ type ShardStatus struct {
 }
 
 type StatusReport struct {
-	Status        string        `json:"status"`
-	Version       string        `json:"version"`
-	StartedAt     string        `json:"startedAt"`
-	UptimeSeconds int64         `json:"uptimeSeconds"`
-	ShardCount    int           `json:"shardCount"`
-	Guilds        int           `json:"guilds"`
-	Users         int           `json:"users"`
-	Shards        []ShardStatus `json:"shards"`
-	GeneratedAt   string        `json:"generatedAt"`
+	Status         string        `json:"status"`
+	Version        string        `json:"version"`
+	StartedAt      string        `json:"startedAt"`
+	UptimeSeconds  int64         `json:"uptimeSeconds"`
+	RestartCount   int64         `json:"restartCount"`
+	FirstStartedAt string        `json:"firstStartedAt,omitempty"`
+	ShardCount     int           `json:"shardCount"`
+	Guilds         int           `json:"guilds"`
+	Users          int           `json:"users"`
+	Shards         []ShardStatus `json:"shards"`
+	GeneratedAt    string        `json:"generatedAt"`
 }
 
 func (b *Bot) GuildCount() int {
@@ -146,7 +148,11 @@ func (b *Bot) computeStatusReport() StatusReport {
 		Version:       Version(),
 		StartedAt:     b.startAt.UTC().Format(time.RFC3339),
 		UptimeSeconds: int64(time.Since(b.startAt).Seconds()),
+		RestartCount:  b.restartCount,
 		GeneratedAt:   now.Format(time.RFC3339),
+	}
+	if !b.firstStartedAt.IsZero() {
+		rep.FirstStartedAt = b.firstStartedAt.UTC().Format(time.RFC3339)
 	}
 	if b.client == nil {
 		rep.Status = "starting"

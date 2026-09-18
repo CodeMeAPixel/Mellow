@@ -9,7 +9,7 @@ Go rewrite of [Mellow](https://github.com/ThingSpace/Mellow), an AI mental healt
 - AI: Anthropic Claude (`anthropic-sdk-go`), default model `claude-haiku-4-5`, params read from the `Mellow` DB row
 - HTTP API: `chi`, OpenAPI spec at `/openapi.json`, Scalar docs at `/docs`
 
-Brand links come from config: `WEBSITE_URL` (default `https://mellow.codemeapixel.dev`)
+Brand links come from config: `WEBSITE_URL` (default `https://mymellow.xyz`)
 derives `/docs`, `/support`, `/invite`, each overridable with `DOCS_URL` /
 `SUPPORT_URL` / `INVITE_URL` / `SOURCE_URL`. Embed footer icons use the bot's own
 avatar, resolved at gateway ready, so there is no external logo URL to maintain.

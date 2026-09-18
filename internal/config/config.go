@@ -42,7 +42,7 @@ type Config struct {
 	SKUMellowPlus string
 }
 
-const defaultWebsite = "https://mellow.codemeapixel.dev"
+const defaultWebsite = "https://mymellow.xyz"
 
 func Load() (*Config, error) {
 	c := &Config{

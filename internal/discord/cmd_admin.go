@@ -328,8 +328,9 @@ func runDebugAdmin(ctx context.Context, c *Ctx) error {
 			return c.Reply(errorEmbed("Database", err.Error()))
 		}
 		st, _ := c.Store.CommunityStats(ctx)
-		body := fmt.Sprintf("Ping: %s\nUsers: %d | Guilds: %d | Conversations: %d | Crisis events: %d | Check-ins: %d",
-			latency.Round(time.Millisecond), st.Users, st.Guilds, st.Conversations, st.CrisisEvents, st.MoodCheckIns)
+		body := fmt.Sprintf("Ping: %s\nDB rows - Users: %d | Guilds: %d | Conversations: %d | Crisis events: %d | Check-ins: %d\nLive cache - Users: %d | Guilds: %d",
+			latency.Round(time.Millisecond), st.Users, st.Guilds, st.Conversations, st.CrisisEvents, st.MoodCheckIns,
+			c.Bot.UserCount(), c.Bot.GuildCount())
 		return c.Reply(infoEmbed("Database", body))
 	case "ai":
 		cfg := c.AI.Config(ctx)

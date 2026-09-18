@@ -10,7 +10,11 @@ import (
 	"github.com/disgoorg/disgo/gateway"
 )
 
-var activities = []string{
+// Activities is the rotation of "Listening to ..." presence texts. Exported
+// so the initial gateway Identify (see internal/discord/bot.go) can seed the
+// same first activity - otherwise a shard shows no activity at all from the
+// moment it (re)identifies until the next Run tick, up to 5 minutes later.
+var Activities = []string{
 	"with your wellbeing in mind",
 	"/checkin for a mood check",
 	"here whenever you need to talk",
@@ -29,7 +33,7 @@ func Run(ctx context.Context, client *bot.Client) {
 		if client.ShardManager == nil {
 			return
 		}
-		activity := activities[i%len(activities)]
+		activity := Activities[i%len(Activities)]
 		i++
 		for gw := range client.ShardManager.Shards() {
 			if gw.Status() != gateway.StatusReady {

@@ -18,6 +18,7 @@ import (
 	"github.com/CodeMeAPixel/Mellow/internal/db"
 	"github.com/CodeMeAPixel/Mellow/internal/github"
 	"github.com/CodeMeAPixel/Mellow/internal/omniplex"
+	"github.com/CodeMeAPixel/Mellow/internal/services/presence"
 	"github.com/CodeMeAPixel/Mellow/internal/services/syslog"
 	"github.com/disgoorg/disgo"
 	"github.com/disgoorg/disgo/bot"
@@ -54,6 +55,9 @@ type Bot struct {
 	latencyPolling sync.Map
 
 	statusCache atomic.Pointer[StatusReport]
+
+	restartCount   int64
+	firstStartedAt time.Time
 }
 
 type shardInfo struct {
@@ -97,11 +101,19 @@ func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Lo
 		gateway.IntentGuildMessages,
 		gateway.IntentDirectMessages,
 	)
+	// Seed the same activity presence.Run starts with directly into every
+	// Identify payload. Without this, a shard shows no activity at all from
+	// the moment it (re)identifies until the next presence.Run tick (up to
+	// 5 minutes later) - the cause of the presence appearing to "not work".
+	initialPresence := gateway.WithPresenceOpts(
+		gateway.WithListeningActivity(presence.Activities[0]),
+		gateway.WithOnlineStatus(discord.OnlineStatusOnline),
+	)
 
 	client, err := disgo.New(cfg.Token,
 		bot.WithShardManagerConfigOpts(
 			sharding.WithAutoScaling(true),
-			sharding.WithGatewayConfigOpts(intents),
+			sharding.WithGatewayConfigOpts(intents, initialPresence),
 			sharding.WithCloseHandler(b.onShardClose),
 		),
 		bot.WithCacheConfigOpts(cache.WithCaches(cache.FlagGuilds|cache.FlagChannels|cache.FlagRoles)),
@@ -128,6 +140,21 @@ func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Lo
 
 func (b *Bot) Client() *bot.Client  { return b.client }
 func (b *Bot) StartedAt() time.Time { return b.startAt }
+func (b *Bot) UptimeSeconds() int64 { return int64(time.Since(b.startAt).Seconds()) }
+func (b *Bot) RestartCount() int64  { return b.restartCount }
+
+// RecordStart persists a boot event (incrementing the lifetime restart
+// counter) so restart tracking survives process restarts/deploys, unlike
+// startAt which is only ever in-memory since this process began.
+func (b *Bot) RecordStart(ctx context.Context) error {
+	rt, err := b.store.RecordBotStart(ctx)
+	if err != nil {
+		return err
+	}
+	b.restartCount = rt.RestartCount
+	b.firstStartedAt = rt.FirstStartedAt
+	return nil
+}
 
 func (b *Bot) SendLog(ctx context.Context, channelID int64, content string) error {
 	_, err := b.client.Rest.CreateMessage(snowflake.ID(channelID), discord.MessageCreate{
