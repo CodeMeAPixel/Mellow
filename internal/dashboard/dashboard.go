@@ -159,7 +159,7 @@ func (s *Service) cors(public bool) func(http.Handler) http.Handler {
 			case public:
 				h.Set("Access-Control-Allow-Origin", "*")
 			case s.allowedOrigin(origin):
-				h.Set("Access-Control-Allow-Origin", "*")
+				h.Set("Access-Control-Allow-Origin", origin)
 				h.Set("Access-Control-Allow-Credentials", "true")
 			}
 			if r.Method == http.MethodOptions {
