@@ -14,6 +14,7 @@ import (
 const (
 	maxPlanField = 2000
 	maxBody      = 32 << 10
+	freeMoodDays = 30
 )
 
 func decodeLimited(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -116,6 +117,10 @@ func (s *Service) handleMood(w http.ResponseWriter, r *http.Request) {
 	days := 30
 	if v, err := strconv.Atoi(r.URL.Query().Get("days")); err == nil {
 		days = min(max(v, 7), 365)
+	}
+	if days > freeMoodDays && !s.hasPlus(r.Context(), sess(r).UserID) {
+		writeErr(w, http.StatusForbidden, "history beyond 30 days is part of Mellow Plus")
+		return
 	}
 	rows, err := s.store.MoodCheckInsSince(r.Context(), sess(r).UserID, time.Now().AddDate(0, 0, -days))
 	if err != nil {

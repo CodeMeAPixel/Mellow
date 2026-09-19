@@ -27,3 +27,15 @@ SELECT * FROM "UserPreferences"
 WHERE "remindersEnabled" = true
   AND "nextCheckIn" IS NOT NULL
   AND "nextCheckIn" <= now();
+
+-- name: SetQuietHours :exec
+UPDATE "UserPreferences" SET "quietStart" = $2, "quietEnd" = $3 WHERE "id" = $1;
+
+-- name: MarkRecapSent :exec
+UPDATE "UserPreferences" SET "lastRecapAt" = $2 WHERE "id" = $1;
+
+-- name: MarkPromptSent :exec
+UPDATE "UserPreferences" SET "lastPromptAt" = $2 WHERE "id" = $1;
+
+-- name: EngagementUsers :many
+SELECT * FROM "UserPreferences" WHERE "weeklyRecap" = true OR "dailyPrompt" = true;

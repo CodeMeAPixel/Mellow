@@ -500,6 +500,9 @@ type PrefsUpdate struct {
 	AIPersonality           *string
 	Timezone                *string
 	Country                 *string
+	WeeklyRecap             *bool
+	DailyPrompt             *bool
+	CustomPersona           *string
 	Language                *string
 	ReminderMethod          *string
 	CheckInInterval         *int32
@@ -519,6 +522,9 @@ func (s *Store) UpdateUserPreferences(ctx context.Context, userID int64, in Pref
 		AiPersonality:           in.AIPersonality,
 		Timezone:                in.Timezone,
 		Country:                 in.Country,
+		WeeklyRecap:             in.WeeklyRecap,
+		DailyPrompt:             in.DailyPrompt,
+		CustomPersona:           in.CustomPersona,
 		Language:                in.Language,
 		ReminderMethod:          in.ReminderMethod,
 		CheckInInterval:         in.CheckInInterval,

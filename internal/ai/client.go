@@ -67,14 +67,15 @@ func (c *Client) RefreshConfig(ctx context.Context) db.AIConfig {
 }
 
 type GenOpts struct {
-	GuildID     string
-	ChannelID   string
-	MessageID   string
-	IsDM        bool
-	Personality string
-	Timezone    string
-	Persist     bool
-	HistoryLen  int32
+	GuildID       string
+	ChannelID     string
+	MessageID     string
+	IsDM          bool
+	Personality   string
+	CustomPersona string
+	Timezone      string
+	Persist       bool
+	HistoryLen    int32
 }
 
 func (c *Client) Generate(ctx context.Context, userID int64, userMsg string, opts GenOpts) (string, error) {

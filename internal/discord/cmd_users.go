@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CodeMeAPixel/Mellow/internal/ai"
 	"github.com/CodeMeAPixel/Mellow/internal/db"
 	"github.com/CodeMeAPixel/Mellow/internal/db/gen"
 	"github.com/CodeMeAPixel/Mellow/internal/helplines"
@@ -28,6 +29,9 @@ var personalityChoices = []discord.ApplicationCommandOptionChoiceString{
 	{Name: "Playful", Value: "playful"},
 	{Name: "Professional", Value: "professional"},
 	{Name: "Encouraging", Value: "encouraging"},
+	{Name: "Coach (Plus)", Value: "coach"},
+	{Name: "Reflective (Plus)", Value: "reflective"},
+	{Name: "Minimal (Plus)", Value: "minimal"},
 }
 
 func userCommands() []*Command {
@@ -45,6 +49,12 @@ func userCommands() []*Command {
 						discord.ApplicationCommandOptionString{Name: "country", Description: "Your country, so crisis resources match where you are", Choices: countryChoices()},
 						discord.ApplicationCommandOptionInt{Name: "checkin_interval", Description: "Minutes between check-in reminders"},
 						discord.ApplicationCommandOptionBool{Name: "reminders", Description: "Enable check-in reminders"},
+						discord.ApplicationCommandOptionInt{Name: "quiet_start", Description: "Hour (0-23, your time) when Mellow stops messaging you"},
+						discord.ApplicationCommandOptionInt{Name: "quiet_end", Description: "Hour (0-23, your time) when Mellow may message you again"},
+						discord.ApplicationCommandOptionBool{Name: "quiet_off", Description: "Turn quiet hours off"},
+						discord.ApplicationCommandOptionBool{Name: "weekly_recap", Description: "Get a gentle weekly recap of your check-ins by DM"},
+						discord.ApplicationCommandOptionBool{Name: "daily_prompt", Description: "Get one reflection prompt by DM each day"},
+						discord.ApplicationCommandOptionString{Name: "persona", Description: "Plus: describe the conversation style you want (or type clear)"},
 						discord.ApplicationCommandOptionBool{Name: "context_logging", Description: "Allow logging messages for AI context"},
 						discord.ApplicationCommandOptionBool{Name: "crisis_detection", Description: "Enable crisis detection on your messages"},
 						discord.ApplicationCommandOptionBool{Name: "crisis_dms", Description: "Allow Mellow to DM you crisis support"},
@@ -115,7 +125,47 @@ func runPreferences(ctx context.Context, c *Ctx) error {
 	var upd db.PrefsUpdate
 	changed := false
 	if v := c.String("personality"); v != "" {
+		if ai.IsPlusPersonality(v) && !c.HasPlus(ctx) {
+			return c.ReplyEphemeral(plusOnly("The " + v + " style"))
+		}
 		upd.AIPersonality = &v
+		changed = true
+	}
+	if v := c.String("persona"); v != "" {
+		if !c.HasPlus(ctx) {
+			return c.ReplyEphemeral(plusOnly("A custom conversation style"))
+		}
+		if strings.EqualFold(strings.TrimSpace(v), "clear") {
+			v = ""
+		} else {
+			v = ai.SanitizePersona(v)
+		}
+		upd.CustomPersona = &v
+		changed = true
+	}
+	if v, ok := c.Data.OptBool("weekly_recap"); ok {
+		upd.WeeklyRecap = &v
+		changed = true
+	}
+	if v, ok := c.Data.OptBool("daily_prompt"); ok {
+		upd.DailyPrompt = &v
+		changed = true
+	}
+	quietStart, hasStart := c.Int("quiet_start")
+	quietEnd, hasEnd := c.Int("quiet_end")
+	quietOff, _ := c.Data.OptBool("quiet_off")
+	if quietOff || hasStart || hasEnd {
+		if !quietOff {
+			if !hasStart || !hasEnd || quietStart < 0 || quietStart > 23 || quietEnd < 0 || quietEnd > 23 {
+				return c.ReplyEphemeral("Set both `quiet_start` and `quiet_end` to hours between 0 and 23, for example 22 and 7.")
+			}
+			s, e := int32(quietStart), int32(quietEnd)
+			if err := c.Store.SetQuietHours(ctx, c.UserID, &s, &e); err != nil {
+				return err
+			}
+		} else if err := c.Store.SetQuietHours(ctx, c.UserID, nil, nil); err != nil {
+			return err
+		}
 		changed = true
 	}
 	if v := c.String("timezone"); v != "" {
@@ -261,6 +311,16 @@ func renderPrefs(p gen.UserPreferences) string {
 	}
 	fmt.Fprintf(&b, "Country (for crisis resources): **%s**\n", country)
 	fmt.Fprintf(&b, "Check-in interval: **%d min**\n", p.CheckInInterval)
+	quiet := "off"
+	if p.QuietStart != nil && p.QuietEnd != nil {
+		quiet = fmt.Sprintf("%02d:00 to %02d:00", *p.QuietStart, *p.QuietEnd)
+	}
+	fmt.Fprintf(&b, "Quiet hours: **%s**\n", quiet)
+	fmt.Fprintf(&b, "Weekly recap: **%s**\n", onOff(p.WeeklyRecap))
+	fmt.Fprintf(&b, "Daily prompt: **%s**\n", onOff(p.DailyPrompt))
+	if p.CustomPersona != nil && *p.CustomPersona != "" {
+		fmt.Fprintf(&b, "Custom style: **%s**\n", *p.CustomPersona)
+	}
 	fmt.Fprintf(&b, "Reminders: **%s** (%s)\n", onOff(p.RemindersEnabled), deref(p.ReminderMethod, "dm"))
 	fmt.Fprintf(&b, "Context logging: **%s**\n", onOff(!p.DisableContextLogging))
 	fmt.Fprintf(&b, "Crisis detection: **%s**\n", onOff(!p.DisableCrisisDetection))

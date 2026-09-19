@@ -35,6 +35,8 @@ func copingCommand() *Command {
 			Options: []discord.ApplicationCommandOption{
 				discord.ApplicationCommandOptionString{Name: "write", Description: "Text to save as a new entry"},
 				discord.ApplicationCommandOptionInt{Name: "delete", Description: "Entry number to delete (from the list)"},
+				discord.ApplicationCommandOptionString{Name: "search", Description: "Plus: find entries containing this text"},
+				discord.ApplicationCommandOptionString{Name: "tag", Description: "Plus: find entries with this #tag (add #tags when you write)"},
 			},
 		},
 		discord.ApplicationCommandOptionSubCommand{
@@ -151,6 +153,20 @@ func runJournal(ctx context.Context, c *Ctx) error {
 			return err
 		}
 		return c.ReplyEphemeral(fmt.Sprintf("Deleted entry %d.", n))
+	}
+	if search, tag := c.String("search"), c.String("tag"); search != "" || tag != "" {
+		if !c.HasPlus(ctx) {
+			return c.ReplyEphemeral(plusOnly("Searching your journal"))
+		}
+		all, err := c.Store.JournalEntriesForUser(ctx, c.UserID, 500, 0)
+		if err != nil {
+			return err
+		}
+		matches := filterJournal(all, search, tag)
+		if len(matches) == 0 {
+			return c.ReplyEphemeral("No journal entries matched.")
+		}
+		return c.ReplyEphemeral(renderJournalMatches(matches, 8))
 	}
 	rows, err := c.Store.JournalEntriesForUser(ctx, c.UserID, 10, 0)
 	if err != nil {

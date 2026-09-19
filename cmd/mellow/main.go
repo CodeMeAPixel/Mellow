@@ -25,6 +25,7 @@ import (
 	"github.com/CodeMeAPixel/Mellow/internal/services/reminder"
 	"github.com/CodeMeAPixel/Mellow/internal/services/statusposter"
 	"github.com/CodeMeAPixel/Mellow/internal/services/syslog"
+	"github.com/CodeMeAPixel/Mellow/internal/services/wellbeing"
 	"github.com/joho/godotenv"
 )
 
@@ -159,6 +160,7 @@ func main() {
 	}
 
 	go reminder.New(b.Client(), store).Run(ctx)
+	go wellbeing.New(b.Client(), store, cfg.DashboardURL).Run(ctx)
 	go presence.Run(ctx, b.Client())
 	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, b.ShardCount, b.GuildCount, b.UserCount, b.UptimeSeconds, b.RestartCount).Run(ctx)
 	go b.SweepGames(ctx)

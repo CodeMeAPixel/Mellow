@@ -17,6 +17,7 @@ func buildStableSystem(base string, opts GenOpts) string {
 	b.WriteString(base)
 	b.WriteString("\n\n" + safetyBlock)
 	b.WriteString(personalityInstructions(opts.Personality))
+	b.WriteString(customPersonaBlock(opts.CustomPersona))
 	if opts.IsDM {
 		b.WriteString("\n\n" + dmGuidelines)
 	} else {
@@ -35,6 +36,12 @@ func personalityInstructions(personality string) string {
 		return "\n\nPersonality: Playful. Use light humor when appropriate, never about serious mental health issues. Be casual and conversational. Keep the mood lighter while still being supportive."
 	case "professional":
 		return "\n\nPersonality: Professional. Use measured, informative language. Provide structured responses. Reference mental health best practices. Maintain caring, professional boundaries."
+	case "coach":
+		return "\n\nPersonality: Coach. Be warm but action-oriented. Help the user break things into small next steps and hold themselves gently accountable. Ask one focused question at a time."
+	case "reflective":
+		return "\n\nPersonality: Reflective. Slow down and mirror what you hear. Offer thoughtful observations and open questions that help the user understand their own feelings, without diagnosing."
+	case "minimal":
+		return "\n\nPersonality: Minimal. Keep replies very short and calm: a sentence or two. Leave room for the user to lead."
 	case "encouraging":
 		return "\n\nPersonality: Encouraging. Focus on progress and growth. Celebrate small wins and efforts. Use positive, hopeful language. Emphasize resilience and capability."
 	default:

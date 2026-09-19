@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CodeMeAPixel/Mellow/internal/ai"
 	"github.com/CodeMeAPixel/Mellow/internal/billing"
 	"github.com/CodeMeAPixel/Mellow/internal/config"
 	"github.com/CodeMeAPixel/Mellow/internal/db"
@@ -490,6 +491,11 @@ type prefsDTO struct {
 	DisableContextLogging   bool   `json:"disableContextLogging"`
 	DisableCrisisDetection  bool   `json:"disableCrisisDetection"`
 	DisableCrisisSupportDMs bool   `json:"disableCrisisSupportDMs"`
+	WeeklyRecap             bool   `json:"weeklyRecap"`
+	DailyPrompt             bool   `json:"dailyPrompt"`
+	QuietStart              *int32 `json:"quietStart"`
+	QuietEnd                *int32 `json:"quietEnd"`
+	CustomPersona           string `json:"customPersona"`
 }
 
 func deref(p *string, def string) string {
@@ -511,7 +517,20 @@ func prefsToDTO(p gen.UserPreferences) prefsDTO {
 		DisableContextLogging:   p.DisableContextLogging,
 		DisableCrisisDetection:  p.DisableCrisisDetection,
 		DisableCrisisSupportDMs: p.DisableCrisisSupportDMs,
+		WeeklyRecap:             p.WeeklyRecap,
+		DailyPrompt:             p.DailyPrompt,
+		QuietStart:              p.QuietStart,
+		QuietEnd:                p.QuietEnd,
+		CustomPersona:           deref(p.CustomPersona, ""),
 	}
+}
+
+func (s *Service) hasPlus(ctx context.Context, uid int64) bool {
+	if s.billing == nil || !s.billing.Enabled() {
+		return false
+	}
+	has, _ := s.billing.HasPlusUser(ctx, uid)
+	return has
 }
 
 func (s *Service) handleGetPrefs(w http.ResponseWriter, r *http.Request) {
@@ -521,9 +540,11 @@ func (s *Service) handleGetPrefs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"preferences":   prefsToDTO(p),
-		"personalities": personalities,
-		"countries":     helplines.Countries(),
+		"preferences":       prefsToDTO(p),
+		"personalities":     personalities,
+		"plusPersonalities": ai.PlusPersonalities,
+		"plus":              s.hasPlus(r.Context(), sess(r).UserID),
+		"countries":         helplines.Countries(),
 	})
 }
 
@@ -538,6 +559,12 @@ type prefsPatch struct {
 	DisableContextLogging   *bool   `json:"disableContextLogging"`
 	DisableCrisisDetection  *bool   `json:"disableCrisisDetection"`
 	DisableCrisisSupportDMs *bool   `json:"disableCrisisSupportDMs"`
+	WeeklyRecap             *bool   `json:"weeklyRecap"`
+	DailyPrompt             *bool   `json:"dailyPrompt"`
+	QuietStart              *int32  `json:"quietStart"`
+	QuietEnd                *int32  `json:"quietEnd"`
+	QuietOff                *bool   `json:"quietOff"`
+	CustomPersona           *string `json:"customPersona"`
 }
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
@@ -556,9 +583,35 @@ func (s *Service) handlePatchPrefs(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if in.AIPersonality != nil && !slices.Contains(personalities, *in.AIPersonality) {
-		writeErr(w, http.StatusBadRequest, "unknown personality")
-		return
+	plus := s.hasPlus(r.Context(), sess(r).UserID)
+	if in.AIPersonality != nil {
+		switch {
+		case slices.Contains(personalities, *in.AIPersonality):
+		case ai.IsPlusPersonality(*in.AIPersonality):
+			if !plus {
+				writeErr(w, http.StatusForbidden, "that style is part of Mellow Plus")
+				return
+			}
+		default:
+			writeErr(w, http.StatusBadRequest, "unknown personality")
+			return
+		}
+	}
+	if in.CustomPersona != nil {
+		if !plus {
+			writeErr(w, http.StatusForbidden, "a custom style is part of Mellow Plus")
+			return
+		}
+		clean := ai.SanitizePersona(*in.CustomPersona)
+		in.CustomPersona = &clean
+	}
+	quietOff := in.QuietOff != nil && *in.QuietOff
+	if !quietOff && (in.QuietStart != nil || in.QuietEnd != nil) {
+		if in.QuietStart == nil || in.QuietEnd == nil ||
+			*in.QuietStart < 0 || *in.QuietStart > 23 || *in.QuietEnd < 0 || *in.QuietEnd > 23 {
+			writeErr(w, http.StatusBadRequest, "quiet hours need a start and end between 0 and 23")
+			return
+		}
 	}
 	if in.Timezone != nil {
 		if _, err := time.LoadLocation(*in.Timezone); err != nil || *in.Timezone == "" {
@@ -594,10 +647,27 @@ func (s *Service) handlePatchPrefs(w http.ResponseWriter, r *http.Request) {
 		DisableContextLogging:   in.DisableContextLogging,
 		DisableCrisisDetection:  in.DisableCrisisDetection,
 		DisableCrisisSupportDMs: in.DisableCrisisSupportDMs,
+		WeeklyRecap:             in.WeeklyRecap,
+		DailyPrompt:             in.DailyPrompt,
+		CustomPersona:           in.CustomPersona,
 	})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "could not save preferences")
 		return
+	}
+	if quietOff || in.QuietStart != nil {
+		start, end := in.QuietStart, in.QuietEnd
+		if quietOff {
+			start, end = nil, nil
+		}
+		if err := s.store.SetQuietHours(r.Context(), sess(r).UserID, start, end); err != nil {
+			writeErr(w, http.StatusInternalServerError, "could not save quiet hours")
+			return
+		}
+		if p, err = s.store.GetUserPreferences(r.Context(), sess(r).UserID); err != nil {
+			writeErr(w, http.StatusInternalServerError, "saved, but could not reload preferences")
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"preferences": prefsToDTO(p)})
 }
@@ -723,7 +793,7 @@ func (s *Service) handlePatchGuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channelOK := func(v *string) bool {
-		if v == nil {
+		if v == nil || *v == "" {
 			return true
 		}
 		if s.dir.Channels == nil {
@@ -737,7 +807,7 @@ func (s *Service) handlePatchGuild(w http.ResponseWriter, r *http.Request) {
 		return false
 	}
 	roleOK := func(v *string) bool {
-		if v == nil {
+		if v == nil || *v == "" {
 			return true
 		}
 		if s.dir.Roles == nil {

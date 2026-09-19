@@ -11,8 +11,6 @@ import (
 )
 
 var Activities = []string{
-	"mymellow.xyz",
-	"docs.mymellow.xyz",
 	"keeping your wellbeing in mind",
 	"/checkin for a mood check",
 	"here whenever you need to talk",

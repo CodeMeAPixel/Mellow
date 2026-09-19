@@ -23,14 +23,14 @@ func (q *Queries) DeleteConversationForUser(ctx context.Context, userid int64) (
 
 const updateGuildSettings = `-- name: UpdateGuildSettings :one
 UPDATE "Guild" SET
-    "systemChannelId"       = COALESCE($2, "systemChannelId"),
-    "modAlertChannelId"     = COALESCE($3, "modAlertChannelId"),
-    "modLogChannelId"       = COALESCE($4, "modLogChannelId"),
-    "auditLogChannelId"     = COALESCE($5, "auditLogChannelId"),
-    "checkInChannelId"      = COALESCE($6, "checkInChannelId"),
-    "copingToolLogId"       = COALESCE($7, "copingToolLogId"),
-    "moderatorRoleId"       = COALESCE($8, "moderatorRoleId"),
-    "systemRoleId"          = COALESCE($9, "systemRoleId"),
+    "systemChannelId"       = NULLIF(COALESCE($2, "systemChannelId"), ''),
+    "modAlertChannelId"     = NULLIF(COALESCE($3, "modAlertChannelId"), ''),
+    "modLogChannelId"       = NULLIF(COALESCE($4, "modLogChannelId"), ''),
+    "auditLogChannelId"     = NULLIF(COALESCE($5, "auditLogChannelId"), ''),
+    "checkInChannelId"      = NULLIF(COALESCE($6, "checkInChannelId"), ''),
+    "copingToolLogId"       = NULLIF(COALESCE($7, "copingToolLogId"), ''),
+    "moderatorRoleId"       = NULLIF(COALESCE($8, "moderatorRoleId"), ''),
+    "systemRoleId"          = NULLIF(COALESCE($9, "systemRoleId"), ''),
     "enableCheckIns"        = COALESCE($10, "enableCheckIns"),
     "enableGhostLetters"    = COALESCE($11, "enableGhostLetters"),
     "enableCrisisAlerts"    = COALESCE($12, "enableCrisisAlerts"),

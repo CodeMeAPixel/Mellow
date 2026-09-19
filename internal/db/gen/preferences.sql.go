@@ -11,7 +11,7 @@ import (
 )
 
 const dueForReminder = `-- name: DueForReminder :many
-SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country FROM "UserPreferences"
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country, "weeklyRecap", "dailyPrompt", "quietStart", "quietEnd", "lastRecapAt", "lastPromptAt", "customPersona" FROM "UserPreferences"
 WHERE "remindersEnabled" = true
   AND "nextCheckIn" IS NOT NULL
   AND "nextCheckIn" <= now()
@@ -44,6 +44,62 @@ func (q *Queries) DueForReminder(ctx context.Context) ([]UserPreferences, error)
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Country,
+			&i.WeeklyRecap,
+			&i.DailyPrompt,
+			&i.QuietStart,
+			&i.QuietEnd,
+			&i.LastRecapAt,
+			&i.LastPromptAt,
+			&i.CustomPersona,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const engagementUsers = `-- name: EngagementUsers :many
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country, "weeklyRecap", "dailyPrompt", "quietStart", "quietEnd", "lastRecapAt", "lastPromptAt", "customPersona" FROM "UserPreferences" WHERE "weeklyRecap" = true OR "dailyPrompt" = true
+`
+
+func (q *Queries) EngagementUsers(ctx context.Context) ([]UserPreferences, error) {
+	rows, err := q.db.Query(ctx, engagementUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserPreferences
+	for rows.Next() {
+		var i UserPreferences
+		if err := rows.Scan(
+			&i.ID,
+			&i.CheckInInterval,
+			&i.LastReminder,
+			&i.NextCheckIn,
+			&i.RemindersEnabled,
+			&i.ReminderMethod,
+			&i.JournalPrivacy,
+			&i.AiPersonality,
+			&i.ProfileTheme,
+			&i.Language,
+			&i.Timezone,
+			&i.DisableContextLogging,
+			&i.DisableCrisisDetection,
+			&i.DisableCrisisSupportDMs,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Country,
+			&i.WeeklyRecap,
+			&i.DailyPrompt,
+			&i.QuietStart,
+			&i.QuietEnd,
+			&i.LastRecapAt,
+			&i.LastPromptAt,
+			&i.CustomPersona,
 		); err != nil {
 			return nil, err
 		}
@@ -59,7 +115,7 @@ const ensureUserPreferences = `-- name: EnsureUserPreferences :one
 INSERT INTO "UserPreferences" ("id")
 VALUES ($1)
 ON CONFLICT ("id") DO UPDATE SET "id" = "UserPreferences"."id"
-RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country
+RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country, "weeklyRecap", "dailyPrompt", "quietStart", "quietEnd", "lastRecapAt", "lastPromptAt", "customPersona"
 `
 
 func (q *Queries) EnsureUserPreferences(ctx context.Context, id int64) (UserPreferences, error) {
@@ -83,12 +139,19 @@ func (q *Queries) EnsureUserPreferences(ctx context.Context, id int64) (UserPref
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Country,
+		&i.WeeklyRecap,
+		&i.DailyPrompt,
+		&i.QuietStart,
+		&i.QuietEnd,
+		&i.LastRecapAt,
+		&i.LastPromptAt,
+		&i.CustomPersona,
 	)
 	return i, err
 }
 
 const getUserPreferences = `-- name: GetUserPreferences :one
-SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country FROM "UserPreferences" WHERE "id" = $1
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country, "weeklyRecap", "dailyPrompt", "quietStart", "quietEnd", "lastRecapAt", "lastPromptAt", "customPersona" FROM "UserPreferences" WHERE "id" = $1
 `
 
 func (q *Queries) GetUserPreferences(ctx context.Context, id int64) (UserPreferences, error) {
@@ -112,8 +175,43 @@ func (q *Queries) GetUserPreferences(ctx context.Context, id int64) (UserPrefere
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Country,
+		&i.WeeklyRecap,
+		&i.DailyPrompt,
+		&i.QuietStart,
+		&i.QuietEnd,
+		&i.LastRecapAt,
+		&i.LastPromptAt,
+		&i.CustomPersona,
 	)
 	return i, err
+}
+
+const markPromptSent = `-- name: MarkPromptSent :exec
+UPDATE "UserPreferences" SET "lastPromptAt" = $2 WHERE "id" = $1
+`
+
+type MarkPromptSentParams struct {
+	ID           int64      `json:"id"`
+	LastPromptAt *time.Time `json:"lastPromptAt"`
+}
+
+func (q *Queries) MarkPromptSent(ctx context.Context, arg MarkPromptSentParams) error {
+	_, err := q.db.Exec(ctx, markPromptSent, arg.ID, arg.LastPromptAt)
+	return err
+}
+
+const markRecapSent = `-- name: MarkRecapSent :exec
+UPDATE "UserPreferences" SET "lastRecapAt" = $2 WHERE "id" = $1
+`
+
+type MarkRecapSentParams struct {
+	ID          int64      `json:"id"`
+	LastRecapAt *time.Time `json:"lastRecapAt"`
+}
+
+func (q *Queries) MarkRecapSent(ctx context.Context, arg MarkRecapSentParams) error {
+	_, err := q.db.Exec(ctx, markRecapSent, arg.ID, arg.LastRecapAt)
+	return err
 }
 
 const markReminderSent = `-- name: MarkReminderSent :exec
@@ -162,5 +260,20 @@ type SetNextCheckInParams struct {
 
 func (q *Queries) SetNextCheckIn(ctx context.Context, arg SetNextCheckInParams) error {
 	_, err := q.db.Exec(ctx, setNextCheckIn, arg.ID, arg.NextCheckIn)
+	return err
+}
+
+const setQuietHours = `-- name: SetQuietHours :exec
+UPDATE "UserPreferences" SET "quietStart" = $2, "quietEnd" = $3 WHERE "id" = $1
+`
+
+type SetQuietHoursParams struct {
+	ID         int64  `json:"id"`
+	QuietStart *int32 `json:"quietStart"`
+	QuietEnd   *int32 `json:"quietEnd"`
+}
+
+func (q *Queries) SetQuietHours(ctx context.Context, arg SetQuietHoursParams) error {
+	_, err := q.db.Exec(ctx, setQuietHours, arg.ID, arg.QuietStart, arg.QuietEnd)
 	return err
 }

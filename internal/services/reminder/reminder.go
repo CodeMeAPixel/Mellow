@@ -44,6 +44,9 @@ func (s *Service) tick(ctx context.Context) {
 		if p.ReminderMethod != nil && *p.ReminderMethod != "dm" {
 			continue
 		}
+		if db.InQuietHours(p, time.Now()) {
+			continue
+		}
 		if s.dm(ctx, p.ID) {
 			interval := p.CheckInInterval
 			if interval <= 0 {

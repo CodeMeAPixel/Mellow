@@ -247,6 +247,13 @@ type UserPreferences struct {
 	CreatedAt               time.Time  `json:"createdAt"`
 	UpdatedAt               time.Time  `json:"updatedAt"`
 	Country                 *string    `json:"country"`
+	WeeklyRecap             bool       `json:"weeklyRecap"`
+	DailyPrompt             bool       `json:"dailyPrompt"`
+	QuietStart              *int32     `json:"quietStart"`
+	QuietEnd                *int32     `json:"quietEnd"`
+	LastRecapAt             *time.Time `json:"lastRecapAt"`
+	LastPromptAt            *time.Time `json:"lastPromptAt"`
+	CustomPersona           *string    `json:"customPersona"`
 }
 
 type WebSession struct {

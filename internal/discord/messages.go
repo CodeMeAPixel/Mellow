@@ -58,7 +58,7 @@ func (b *Bot) onMessage(e *events.MessageCreate) {
 		}
 	}
 
-	var personality, timezone string
+	var personality, timezone, persona string
 	crisisEnabled := true
 	if prefs, perr := b.store.GetUserPreferences(ctx, userID); perr == nil {
 		if prefs.AiPersonality != nil {
@@ -68,6 +68,19 @@ func (b *Bot) onMessage(e *events.MessageCreate) {
 			timezone = *prefs.Timezone
 		}
 		crisisEnabled = !prefs.DisableCrisisDetection
+		if prefs.CustomPersona != nil {
+			persona = *prefs.CustomPersona
+		}
+	}
+
+	var historyLen int32
+	if has, _ := b.billing.HasPlusUser(ctx, userID); has {
+		historyLen = plusHistoryLen
+	} else {
+		persona = ""
+		if ai.IsPlusPersonality(personality) {
+			personality = ""
+		}
 	}
 
 	if crisisEnabled {
@@ -78,13 +91,15 @@ func (b *Bot) onMessage(e *events.MessageCreate) {
 	}
 
 	reply, err := b.ai.Generate(ctx, userID, content, ai.GenOpts{
-		GuildID:     guildID,
-		ChannelID:   e.ChannelID.String(),
-		MessageID:   msg.ID.String(),
-		IsDM:        isDM,
-		Persist:     true,
-		Personality: personality,
-		Timezone:    timezone,
+		GuildID:       guildID,
+		ChannelID:     e.ChannelID.String(),
+		MessageID:     msg.ID.String(),
+		IsDM:          isDM,
+		Persist:       true,
+		Personality:   personality,
+		CustomPersona: persona,
+		HistoryLen:    historyLen,
+		Timezone:      timezone,
 	})
 	if err != nil {
 		if errors.Is(err, ai.ErrNoKey) || errors.Is(err, ai.ErrDisabled) {

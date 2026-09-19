@@ -146,17 +146,20 @@ UPDATE "UserPreferences" SET
     "aiPersonality"           = COALESCE($2, "aiPersonality"),
     "timezone"                = COALESCE($3, "timezone"),
     "country"                 = COALESCE($4, "country"),
-    "language"                = COALESCE($5, "language"),
-    "reminderMethod"          = COALESCE($6, "reminderMethod"),
-    "profileTheme"            = COALESCE($7, "profileTheme"),
-    "checkInInterval"         = COALESCE($8, "checkInInterval"),
-    "remindersEnabled"        = COALESCE($9, "remindersEnabled"),
-    "journalPrivacy"          = COALESCE($10, "journalPrivacy"),
-    "disableContextLogging"   = COALESCE($11, "disableContextLogging"),
-    "disableCrisisDetection"  = COALESCE($12, "disableCrisisDetection"),
-    "disableCrisisSupportDMs" = COALESCE($13, "disableCrisisSupportDMs")
+    "weeklyRecap"            = COALESCE($5, "weeklyRecap"),
+    "dailyPrompt"            = COALESCE($6, "dailyPrompt"),
+    "customPersona"          = COALESCE($7, "customPersona"),
+    "language"                = COALESCE($8, "language"),
+    "reminderMethod"          = COALESCE($9, "reminderMethod"),
+    "profileTheme"            = COALESCE($10, "profileTheme"),
+    "checkInInterval"         = COALESCE($11, "checkInInterval"),
+    "remindersEnabled"        = COALESCE($12, "remindersEnabled"),
+    "journalPrivacy"          = COALESCE($13, "journalPrivacy"),
+    "disableContextLogging"   = COALESCE($14, "disableContextLogging"),
+    "disableCrisisDetection"  = COALESCE($15, "disableCrisisDetection"),
+    "disableCrisisSupportDMs" = COALESCE($16, "disableCrisisSupportDMs")
 WHERE "id" = $1
-RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country
+RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country, "weeklyRecap", "dailyPrompt", "quietStart", "quietEnd", "lastRecapAt", "lastPromptAt", "customPersona"
 `
 
 type UpdateUserPreferencesParams struct {
@@ -164,6 +167,9 @@ type UpdateUserPreferencesParams struct {
 	AiPersonality           *string `json:"ai_personality"`
 	Timezone                *string `json:"timezone"`
 	Country                 *string `json:"country"`
+	WeeklyRecap             *bool   `json:"weekly_recap"`
+	DailyPrompt             *bool   `json:"daily_prompt"`
+	CustomPersona           *string `json:"custom_persona"`
 	Language                *string `json:"language"`
 	ReminderMethod          *string `json:"reminder_method"`
 	ProfileTheme            *string `json:"profile_theme"`
@@ -181,6 +187,9 @@ func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPrefe
 		arg.AiPersonality,
 		arg.Timezone,
 		arg.Country,
+		arg.WeeklyRecap,
+		arg.DailyPrompt,
+		arg.CustomPersona,
 		arg.Language,
 		arg.ReminderMethod,
 		arg.ProfileTheme,
@@ -210,6 +219,13 @@ func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPrefe
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Country,
+		&i.WeeklyRecap,
+		&i.DailyPrompt,
+		&i.QuietStart,
+		&i.QuietEnd,
+		&i.LastRecapAt,
+		&i.LastPromptAt,
+		&i.CustomPersona,
 	)
 	return i, err
 }

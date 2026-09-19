@@ -7,6 +7,7 @@ func (b *Bot) buildRegistry() []*Command {
 	cmds = append(cmds, copingCommand())
 	cmds = append(cmds, crisisCommand())
 	cmds = append(cmds, safetyPlanCommand())
+	cmds = append(cmds, guidedCommand())
 	cmds = append(cmds, userCommands()...)
 	cmds = append(cmds, funCommands()...)
 	cmds = append(cmds, guildCommands()...)
