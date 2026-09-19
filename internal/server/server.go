@@ -24,7 +24,7 @@ type Server struct {
 	countsFn func() (guilds, users int)
 }
 
-func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn func() any, countsFn func() (guilds, users int)) *Server {
+func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn func() any, countsFn func() (guilds, users int), mount func(chi.Router)) *Server {
 	s := &Server{store: store, ai: aiClient, token: token, statusFn: statusFn, countsFn: countsFn}
 
 	r := chi.NewRouter()
@@ -41,6 +41,9 @@ func New(port int, token string, store *db.Store, aiClient *ai.Client, statusFn 
 		r.Get("/stats", s.handleStats)
 		r.Get("/status", s.handleStatus)
 		r.Get("/testimonials", s.handleTestimonials)
+		if mount != nil {
+			mount(r)
+		}
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireToken)
 			r.With(rateLimit(20, time.Minute)).Post("/chat", s.handleChat)

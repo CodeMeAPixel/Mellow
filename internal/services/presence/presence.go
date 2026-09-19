@@ -10,12 +10,10 @@ import (
 	"github.com/disgoorg/disgo/gateway"
 )
 
-// Activities is the rotation of "Listening to ..." presence texts. Exported
-// so the initial gateway Identify (see internal/discord/bot.go) can seed the
-// same first activity - otherwise a shard shows no activity at all from the
-// moment it (re)identifies until the next Run tick, up to 5 minutes later.
 var Activities = []string{
-	"with your wellbeing in mind",
+	"mymellow.xyz",
+	"docs.mymellow.xyz",
+	"keeping your wellbeing in mind",
 	"/checkin for a mood check",
 	"here whenever you need to talk",
 	"/coping for a calm moment",
@@ -35,15 +33,19 @@ func Run(ctx context.Context, client *bot.Client) {
 		}
 		activity := Activities[i%len(Activities)]
 		i++
+
+		var ready []int
 		for gw := range client.ShardManager.Shards() {
-			if gw.Status() != gateway.StatusReady {
-				continue
+			if gw.Status() == gateway.StatusReady {
+				ready = append(ready, gw.ShardID())
 			}
-			if err := client.SetPresenceForShard(ctx, gw.ShardID(),
-				gateway.WithListeningActivity(activity),
+		}
+		for _, id := range ready {
+			if err := client.SetPresenceForShard(ctx, id,
+				gateway.WithCustomActivity(activity),
 				gateway.WithOnlineStatus(discord.OnlineStatusOnline),
 			); err != nil {
-				slog.Warn("set presence failed", slog.Int("shard", gw.ShardID()), slog.String("err", err.Error()))
+				slog.Warn("set presence failed", slog.Int("shard", id), slog.String("err", err.Error()))
 			}
 		}
 	}

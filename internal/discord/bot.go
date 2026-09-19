@@ -101,12 +101,9 @@ func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Lo
 		gateway.IntentGuildMessages,
 		gateway.IntentDirectMessages,
 	)
-	// Seed the same activity presence.Run starts with directly into every
-	// Identify payload. Without this, a shard shows no activity at all from
-	// the moment it (re)identifies until the next presence.Run tick (up to
-	// 5 minutes later) - the cause of the presence appearing to "not work".
+
 	initialPresence := gateway.WithPresenceOpts(
-		gateway.WithListeningActivity(presence.Activities[0]),
+		gateway.WithCustomActivity(presence.Activities[0]),
 		gateway.WithOnlineStatus(discord.OnlineStatusOnline),
 	)
 
@@ -143,9 +140,6 @@ func (b *Bot) StartedAt() time.Time { return b.startAt }
 func (b *Bot) UptimeSeconds() int64 { return int64(time.Since(b.startAt).Seconds()) }
 func (b *Bot) RestartCount() int64  { return b.restartCount }
 
-// RecordStart persists a boot event (incrementing the lifetime restart
-// counter) so restart tracking survives process restarts/deploys, unlike
-// startAt which is only ever in-memory since this process began.
 func (b *Bot) RecordStart(ctx context.Context) error {
 	rt, err := b.store.RecordBotStart(ctx)
 	if err != nil {
@@ -557,3 +551,5 @@ func (b *Bot) onGuildLeave(e *events.GuildLeave) {
 	}
 	b.syslog.GuildMembership(ctx, false, int64(e.Guild.ID), name, b.client.Caches.GuildsLen())
 }
+
+func (b *Bot) Billing() *billing.Service { return b.billing }

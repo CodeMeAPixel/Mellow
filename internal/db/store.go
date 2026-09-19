@@ -882,3 +882,38 @@ func (s *Store) ActiveGuildEntitlement(ctx context.Context, guildID, skuID int64
 	e, err := s.q.ActiveGuildEntitlement(ctx, gen.ActiveGuildEntitlementParams{GuildId: &guildID, SkuId: skuID})
 	return e, norm(err)
 }
+
+type WebSession struct {
+	UserID    int64
+	Username  string
+	Avatar    *string
+	GuildIDs  []int64
+	ExpiresAt time.Time
+}
+
+func (s *Store) CreateWebSession(ctx context.Context, tokenHash string, w WebSession) error {
+	return norm(s.q.CreateWebSession(ctx, gen.CreateWebSessionParams{
+		TokenHash: tokenHash,
+		UserId:    w.UserID,
+		Username:  w.Username,
+		Avatar:    w.Avatar,
+		GuildIds:  w.GuildIDs,
+		ExpiresAt: w.ExpiresAt,
+	}))
+}
+
+func (s *Store) GetWebSession(ctx context.Context, tokenHash string) (WebSession, error) {
+	r, err := s.q.GetWebSession(ctx, tokenHash)
+	if err != nil {
+		return WebSession{}, norm(err)
+	}
+	return WebSession{UserID: r.UserId, Username: r.Username, Avatar: r.Avatar, GuildIDs: r.GuildIds, ExpiresAt: r.ExpiresAt}, nil
+}
+
+func (s *Store) DeleteWebSession(ctx context.Context, tokenHash string) error {
+	return norm(s.q.DeleteWebSession(ctx, tokenHash))
+}
+
+func (s *Store) DeleteExpiredWebSessions(ctx context.Context) error {
+	return norm(s.q.DeleteExpiredWebSessions(ctx))
+}

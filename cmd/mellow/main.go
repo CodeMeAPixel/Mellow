@@ -13,6 +13,7 @@ import (
 	"github.com/CodeMeAPixel/Mellow/internal/ai"
 	"github.com/CodeMeAPixel/Mellow/internal/config"
 	"github.com/CodeMeAPixel/Mellow/internal/crypto"
+	"github.com/CodeMeAPixel/Mellow/internal/dashboard"
 	"github.com/CodeMeAPixel/Mellow/internal/db"
 	"github.com/CodeMeAPixel/Mellow/internal/discord"
 	"github.com/CodeMeAPixel/Mellow/internal/github"
@@ -175,9 +176,11 @@ func main() {
 		b.OmniplexCommands,
 	).Run(ctx)
 
+	dash := dashboard.New(cfg, store, b.Billing(), b.Directory(), b.CommandInfos)
 	srv := server.New(cfg.Port, cfg.APIToken, store, aiClient,
 		func() any { return b.StatusReport() },
 		func() (int, int) { return b.GuildCount(), b.UserCount() },
+		dash.Mount,
 	)
 	go func() {
 		slog.Info("http api listening", slog.Int("port", cfg.Port))

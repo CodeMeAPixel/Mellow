@@ -241,3 +241,13 @@ type UserPreferences struct {
 	CreatedAt               time.Time  `json:"createdAt"`
 	UpdatedAt               time.Time  `json:"updatedAt"`
 }
+
+type WebSession struct {
+	TokenHash string    `json:"tokenHash"`
+	UserId    int64     `json:"userId"`
+	Username  string    `json:"username"`
+	Avatar    *string   `json:"avatar"`
+	GuildIds  []int64   `json:"guildIds"`
+	CreatedAt time.Time `json:"createdAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
