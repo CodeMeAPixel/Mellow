@@ -43,6 +43,7 @@ type Service struct {
 	client       *bot.Client
 	store        *db.Store
 	dashboardURL string
+	serverPlus   func(ctx context.Context, guildID int64) bool
 	every        time.Duration
 }
 
@@ -59,7 +60,9 @@ func (s *Service) Run(ctx context.Context) {
 	ticker := time.NewTicker(s.every)
 	defer ticker.Stop()
 	for {
-		s.tick(ctx, time.Now())
+		now := time.Now()
+		s.tick(ctx, now)
+		s.guildPrompts(ctx, now)
 		select {
 		case <-ctx.Done():
 			return

@@ -42,6 +42,7 @@ type CopingToolUsage struct {
 	UserId   int64     `json:"userId"`
 	ToolName string    `json:"toolName"`
 	UsedAt   time.Time `json:"usedAt"`
+	GuildId  *int64    `json:"guildId"`
 }
 
 type CrisisEvent struct {
@@ -130,6 +131,12 @@ type Guild struct {
 	Language              *string    `json:"language"`
 	DisableContextLogging bool       `json:"disableContextLogging"`
 	DiscordId             *string    `json:"discordId"`
+	PromptEnabled         bool       `json:"promptEnabled"`
+	PromptDay             *int32     `json:"promptDay"`
+	PromptHour            int32      `json:"promptHour"`
+	PromptTimezone        *string    `json:"promptTimezone"`
+	LastPromptAt          *time.Time `json:"lastPromptAt"`
+	ExtraAlertChannelIds  []string   `json:"extraAlertChannelIds"`
 }
 
 type JournalEntry struct {
@@ -182,6 +189,7 @@ type MoodCheckIn struct {
 	Note        *string    `json:"note"`
 	NextCheckIn *time.Time `json:"nextCheckIn"`
 	CreatedAt   time.Time  `json:"createdAt"`
+	GuildId     *int64     `json:"guildId"`
 }
 
 type Report struct {

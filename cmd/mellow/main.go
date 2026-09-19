@@ -160,7 +160,7 @@ func main() {
 	}
 
 	go reminder.New(b.Client(), store).Run(ctx)
-	go wellbeing.New(b.Client(), store, cfg.DashboardURL).Run(ctx)
+	go wellbeing.New(b.Client(), store, cfg.DashboardURL).WithServerPlus(b.Billing().HasPlusGuild).Run(ctx)
 	go presence.Run(ctx, b.Client())
 	go statusposter.New(cfg.StatusAPIURL, cfg.StatusAPIKey, version, b.ShardCount, b.GuildCount, b.UserCount, b.UptimeSeconds, b.RestartCount).Run(ctx)
 	go b.SweepGames(ctx)

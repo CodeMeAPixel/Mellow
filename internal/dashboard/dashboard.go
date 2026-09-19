@@ -113,6 +113,7 @@ func (s *Service) Mount(r chi.Router) {
 			r.Post("/me/delete", s.handleDeleteData)
 			r.Get("/me/guilds", s.handleMyGuilds)
 			r.Get("/guilds/{id}", s.handleGetGuild)
+			r.Get("/guilds/{id}/activity", s.handleGuildActivity)
 			r.Patch("/guilds/{id}", s.handlePatchGuild)
 		})
 	})
@@ -688,12 +689,7 @@ func (s *Service) handleMyGuilds(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		plus := false
-		if s.billing != nil && s.billing.Enabled() {
-			_, e := s.store.ActiveGuildEntitlement(r.Context(), id, int64(s.billing.PlusSKU()))
-			plus = e == nil
-		}
-		out = append(out, item{ID: strconv.FormatInt(id, 10), Name: g.Name, Plus: plus})
+		out = append(out, item{ID: strconv.FormatInt(id, 10), Name: g.Name, Plus: s.hasServerPlus(r.Context(), id)})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"guilds": out})
 }
@@ -752,7 +748,10 @@ func (s *Service) guildResponse(ctx context.Context, id int64) (map[string]any, 
 	if s.dir.Roles != nil {
 		roles = s.dir.Roles(id)
 	}
-	return map[string]any{"guild": dto, "channels": channels, "roles": roles}, nil
+	return map[string]any{
+		"guild": dto, "channels": channels, "roles": roles,
+		"serverPlus": s.serverPlusView(ctx, g),
+	}, nil
 }
 
 func (s *Service) handleGetGuild(w http.ResponseWriter, r *http.Request) {
@@ -780,6 +779,8 @@ type guildPatch struct {
 	SystemLogsEnabled     *bool   `json:"systemLogsEnabled"`
 	DisableContextLogging *bool   `json:"disableContextLogging"`
 	Language              *string `json:"language"`
+
+	ServerPlus *serverPlusPatch `json:"serverPlus"`
 }
 
 func (s *Service) handlePatchGuild(w http.ResponseWriter, r *http.Request) {
@@ -847,6 +848,9 @@ func (s *Service) handlePatchGuild(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "could not save settings")
+		return
+	}
+	if in.ServerPlus != nil && !s.applyServerPlus(w, r, id, in.ServerPlus) {
 		return
 	}
 	resp, err := s.guildResponse(r.Context(), id)

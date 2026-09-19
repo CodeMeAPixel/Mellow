@@ -61,7 +61,7 @@ func (q *Queries) CopingToolUsageCountsForUser(ctx context.Context, userid int64
 }
 
 const copingToolUsagesForUser = `-- name: CopingToolUsagesForUser :many
-SELECT id, "userId", "toolName", "usedAt" FROM "CopingToolUsage"
+SELECT id, "userId", "toolName", "usedAt", "guildId" FROM "CopingToolUsage"
 WHERE "userId" = $1
 ORDER BY "usedAt" DESC
 LIMIT $2
@@ -86,6 +86,7 @@ func (q *Queries) CopingToolUsagesForUser(ctx context.Context, arg CopingToolUsa
 			&i.UserId,
 			&i.ToolName,
 			&i.UsedAt,
+			&i.GuildId,
 		); err != nil {
 			return nil, err
 		}
@@ -339,7 +340,7 @@ func (q *Queries) JournalEntriesForUser(ctx context.Context, arg JournalEntriesF
 const recordCopingToolUsage = `-- name: RecordCopingToolUsage :one
 INSERT INTO "CopingToolUsage" ("userId", "toolName")
 VALUES ($1, $2)
-RETURNING id, "userId", "toolName", "usedAt"
+RETURNING id, "userId", "toolName", "usedAt", "guildId"
 `
 
 type RecordCopingToolUsageParams struct {
@@ -355,6 +356,32 @@ func (q *Queries) RecordCopingToolUsage(ctx context.Context, arg RecordCopingToo
 		&i.UserId,
 		&i.ToolName,
 		&i.UsedAt,
+		&i.GuildId,
+	)
+	return i, err
+}
+
+const recordCopingToolUsageInGuild = `-- name: RecordCopingToolUsageInGuild :one
+INSERT INTO "CopingToolUsage" ("userId", "toolName", "guildId")
+VALUES ($1, $2, $3)
+RETURNING id, "userId", "toolName", "usedAt", "guildId"
+`
+
+type RecordCopingToolUsageInGuildParams struct {
+	UserId   int64  `json:"userId"`
+	ToolName string `json:"toolName"`
+	GuildId  *int64 `json:"guildId"`
+}
+
+func (q *Queries) RecordCopingToolUsageInGuild(ctx context.Context, arg RecordCopingToolUsageInGuildParams) (CopingToolUsage, error) {
+	row := q.db.QueryRow(ctx, recordCopingToolUsageInGuild, arg.UserId, arg.ToolName, arg.GuildId)
+	var i CopingToolUsage
+	err := row.Scan(
+		&i.ID,
+		&i.UserId,
+		&i.ToolName,
+		&i.UsedAt,
+		&i.GuildId,
 	)
 	return i, err
 }

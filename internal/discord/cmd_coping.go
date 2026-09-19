@@ -90,7 +90,7 @@ func runCoping(ctx context.Context, c *Ctx) error {
 
 func runAICoping(ctx context.Context, c *Ctx, tool string) error {
 	_ = c.Defer(false)
-	_ = c.Store.RecordCopingToolUsage(ctx, c.UserID, tool)
+	_ = c.Store.RecordCopingToolUsageIn(ctx, c.UserID, tool, c.Bot.activityGuild(c.GuildID))
 
 	out, err := c.AI.Coping(ctx, tool, c.String("feeling"))
 	if err != nil {

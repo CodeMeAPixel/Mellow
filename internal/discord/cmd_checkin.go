@@ -99,7 +99,7 @@ func runCheckin(ctx context.Context, c *Ctx) error {
 	next := time.Now().Add(time.Duration(interval) * time.Minute)
 	if _, err := c.Store.CreateMoodCheckIn(ctx, db.NewMoodCheckIn{
 		UserID: c.UserID, Mood: mood, Intensity: &intensity,
-		Activity: activity, Note: note, NextCheckIn: &next,
+		Activity: activity, Note: note, NextCheckIn: &next, GuildID: c.Bot.activityGuild(c.GuildID),
 	}); err != nil {
 		return err
 	}

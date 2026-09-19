@@ -118,7 +118,7 @@ func runGuided(ctx context.Context, c *Ctx) error {
 		guidedActive.Delete(c.UserID)
 		return err
 	}
-	_ = c.Store.RecordCopingToolUsage(ctx, c.UserID, "guided_"+exercise)
+	_ = c.Store.RecordCopingToolUsageIn(ctx, c.UserID, "guided_"+exercise, c.Bot.activityGuild(c.GuildID))
 
 	userID := c.UserID
 	go func() {

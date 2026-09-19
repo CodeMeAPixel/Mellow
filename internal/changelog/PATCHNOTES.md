@@ -4,6 +4,25 @@ User-facing release notes for Mellow. The newest entry is at the top. Each `##`
 heading is `## v<version> - <friendly title>`; everything under it until the next
 heading is the body that gets published to the bot listing.
 
+## v0.4.0 - Crisis alerts for your server
+
+Crisis alerts now actually reach your server. If you set an alert channel with
+`/guildsettings` (or on the dashboard), a high or critical signal in your server
+now posts a short alert there, as the docs have always described.
+
+- It names the person and links to the message. It never repeats what they wrote
+  and doesn't ping anyone.
+- The person still receives support resources from Mellow directly.
+- One person triggers at most one alert per server every ten minutes.
+- Direct messages never create alerts.
+- Prefer not to receive them? Turn them off with `crisis_alerts:false`, or clear
+  the alert channel.
+
+Also in this release:
+
+- `/docs` and `/support` now link to the right places.
+- The new commands and dashboard are covered in the docs at docs.mymellow.xyz.
+
 ## v0.3.0 - The Mellow dashboard
 
 Mellow now has a home on the web at mymellow.xyz. Sign in with Discord to manage

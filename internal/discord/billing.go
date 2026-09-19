@@ -34,7 +34,7 @@ func (b *Bot) onEntitlementDelete(e *events.EntitlementDelete) {
 }
 
 func (b *Bot) ReconcileEntitlements(ctx context.Context) {
-	if !b.billing.Enabled() {
+	if !b.billing.Enabled() && !b.billing.ServerEnabled() {
 		return
 	}
 	appID := b.client.ApplicationID
@@ -50,7 +50,7 @@ func (b *Bot) ReconcileEntitlements(ctx context.Context) {
 }
 
 func (b *Bot) RunEntitlementSync(ctx context.Context) {
-	if !b.billing.Enabled() {
+	if !b.billing.Enabled() && !b.billing.ServerEnabled() {
 		return
 	}
 	select {

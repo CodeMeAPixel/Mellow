@@ -30,7 +30,7 @@ func (q *Queries) DeleteGuild(ctx context.Context, id int64) error {
 }
 
 const getGuild = `-- name: GetGuild :one
-SELECT id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId" FROM "Guild" WHERE "id" = $1
+SELECT id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId", "promptEnabled", "promptDay", "promptHour", "promptTimezone", "lastPromptAt", "extraAlertChannelIds" FROM "Guild" WHERE "id" = $1
 `
 
 func (q *Queries) GetGuild(ctx context.Context, id int64) (Guild, error) {
@@ -61,6 +61,12 @@ func (q *Queries) GetGuild(ctx context.Context, id int64) (Guild, error) {
 		&i.Language,
 		&i.DisableContextLogging,
 		&i.DiscordId,
+		&i.PromptEnabled,
+		&i.PromptDay,
+		&i.PromptHour,
+		&i.PromptTimezone,
+		&i.LastPromptAt,
+		&i.ExtraAlertChannelIds,
 	)
 	return i, err
 }
@@ -69,7 +75,7 @@ const upsertGuild = `-- name: UpsertGuild :one
 INSERT INTO "Guild" ("id", "name", "ownerId")
 VALUES ($1, $2, $3)
 ON CONFLICT ("id") DO UPDATE SET "name" = EXCLUDED."name", "ownerId" = EXCLUDED."ownerId"
-RETURNING id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId"
+RETURNING id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId", "promptEnabled", "promptDay", "promptHour", "promptTimezone", "lastPromptAt", "extraAlertChannelIds"
 `
 
 type UpsertGuildParams struct {
@@ -106,6 +112,12 @@ func (q *Queries) UpsertGuild(ctx context.Context, arg UpsertGuildParams) (Guild
 		&i.Language,
 		&i.DisableContextLogging,
 		&i.DiscordId,
+		&i.PromptEnabled,
+		&i.PromptDay,
+		&i.PromptHour,
+		&i.PromptTimezone,
+		&i.LastPromptAt,
+		&i.ExtraAlertChannelIds,
 	)
 	return i, err
 }

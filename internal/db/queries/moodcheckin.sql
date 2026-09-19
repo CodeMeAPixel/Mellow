@@ -1,6 +1,6 @@
 -- name: CreateMoodCheckIn :one
-INSERT INTO "MoodCheckIn" ("userId", "mood", "intensity", "activity", "note", "nextCheckIn")
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO "MoodCheckIn" ("userId", "mood", "intensity", "activity", "note", "nextCheckIn", "guildId")
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: RecentMoodCheckIns :many

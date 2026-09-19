@@ -170,6 +170,7 @@ type NewMoodCheckIn struct {
 	Activity    *string
 	Note        *string
 	NextCheckIn *time.Time
+	GuildID     *int64
 }
 
 func (s *Store) CreateMoodCheckIn(ctx context.Context, in NewMoodCheckIn) (gen.MoodCheckIn, error) {
@@ -180,6 +181,7 @@ func (s *Store) CreateMoodCheckIn(ctx context.Context, in NewMoodCheckIn) (gen.M
 		Activity:    s.ePtr(in.Activity),
 		Note:        s.ePtr(in.Note),
 		NextCheckIn: in.NextCheckIn,
+		GuildId:     in.GuildID,
 	})
 	if err != nil {
 		return row, norm(err)

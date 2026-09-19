@@ -39,7 +39,9 @@ type Config struct {
 	OmniplexToken   string
 	OmniplexBaseURL string
 
-	SKUMellowPlus string
+	SKUMellowPlus      string
+	SKUServerPlus      string
+	ServerPlusStoreURL string
 
 	DiscordClientSecret string
 	APIPublicURL        string
@@ -111,6 +113,8 @@ func Load() (*Config, error) {
 	c.OmniplexToken = os.Getenv("OMNIPLEX_TOKEN")
 	c.OmniplexBaseURL = os.Getenv("OMNIPLEX_BASE_URL")
 	c.SKUMellowPlus = os.Getenv("SKU_MELLOW_PLUS_ID")
+	c.SKUServerPlus = os.Getenv("SKU_SERVER_PLUS_ID")
+	c.ServerPlusStoreURL = os.Getenv("SERVER_PLUS_STORE_URL")
 	c.DiscordClientSecret = os.Getenv("DISCORD_CLIENT_SECRET")
 	c.APIPublicURL = strings.TrimRight(firstNonEmpty(os.Getenv("API_PUBLIC_URL"), "https://api.mymellow.xyz"), "/")
 	c.DashboardURL = strings.TrimRight(firstNonEmpty(os.Getenv("DASHBOARD_URL"), c.WebsiteURL+"/dashboard"), "/")

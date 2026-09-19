@@ -12,17 +12,31 @@ import (
 )
 
 type Service struct {
-	store   *db.Store
-	plusSKU snowflake.ID
+	store     *db.Store
+	plusSKU   snowflake.ID
+	serverSKU snowflake.ID
 }
 
-func New(store *db.Store, plusSKUID string) *Service {
-	id, _ := snowflake.Parse(plusSKUID)
-	return &Service{store: store, plusSKU: id}
+func New(store *db.Store, plusSKUID, serverSKUID string) *Service {
+	plus, _ := snowflake.Parse(plusSKUID)
+	server, _ := snowflake.Parse(serverSKUID)
+	return &Service{store: store, plusSKU: plus, serverSKU: server}
 }
 
 func (s *Service) Enabled() bool         { return s.plusSKU != 0 }
 func (s *Service) PlusSKU() snowflake.ID { return s.plusSKU }
+
+func (s *Service) ServerEnabled() bool     { return s.serverSKU != 0 }
+func (s *Service) ServerSKU() snowflake.ID { return s.serverSKU }
+
+// HasPlusGuild reports whether a server has an active Server Plus subscription.
+func (s *Service) HasPlusGuild(ctx context.Context, guildID int64) bool {
+	if !s.ServerEnabled() {
+		return false
+	}
+	_, err := s.store.ActiveGuildEntitlement(ctx, guildID, int64(s.serverSKU))
+	return err == nil
+}
 
 func (s *Service) Sync(ctx context.Context, e discord.Entitlement) error {
 	var userID, guildID, subID *int64
@@ -89,12 +103,17 @@ func (s *Service) HasPlusUser(ctx context.Context, userID int64) (bool, error) {
 }
 
 func (s *Service) Reconcile(ctx context.Context, entitlements rest.Applications, appID snowflake.ID) (int, error) {
-	if !s.Enabled() {
+	if !s.Enabled() && !s.ServerEnabled() {
 		return 0, nil
 	}
-	rows, err := entitlements.GetEntitlements(appID, rest.GetEntitlementsParams{
-		SkuIDs: []snowflake.ID{s.plusSKU},
-	})
+	var skus []snowflake.ID
+	if s.Enabled() {
+		skus = append(skus, s.plusSKU)
+	}
+	if s.ServerEnabled() {
+		skus = append(skus, s.serverSKU)
+	}
+	rows, err := entitlements.GetEntitlements(appID, rest.GetEntitlementsParams{SkuIDs: skus})
 	if err != nil {
 		return 0, err
 	}

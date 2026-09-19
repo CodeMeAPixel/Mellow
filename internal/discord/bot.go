@@ -77,7 +77,7 @@ func New(cfg *config.Config, store *db.Store, aiClient *ai.Client, sl *syslog.Lo
 		syslog:    sl,
 		omni:      omniplex.New(cfg.OmniplexBaseURL, cfg.OmniplexToken, cfg.ClientID),
 		gh:        github.New(cfg.GitHubRepo, cfg.GitHubToken),
-		billing:   billing.New(store, cfg.SKUMellowPlus),
+		billing:   billing.New(store, cfg.SKUMellowPlus, cfg.SKUServerPlus),
 		commands:  map[string]*Command{},
 		cooldns:   map[string]time.Time{},
 		games:     map[string]*wordGame{},

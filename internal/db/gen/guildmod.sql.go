@@ -38,7 +38,7 @@ UPDATE "Guild" SET
     "language"              = COALESCE($14, "language"),
     "disableContextLogging" = COALESCE($15, "disableContextLogging")
 WHERE "id" = $1
-RETURNING id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId"
+RETURNING id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId", "promptEnabled", "promptDay", "promptHour", "promptTimezone", "lastPromptAt", "extraAlertChannelIds"
 `
 
 type UpdateGuildSettingsParams struct {
@@ -103,6 +103,12 @@ func (q *Queries) UpdateGuildSettings(ctx context.Context, arg UpdateGuildSettin
 		&i.Language,
 		&i.DisableContextLogging,
 		&i.DiscordId,
+		&i.PromptEnabled,
+		&i.PromptDay,
+		&i.PromptHour,
+		&i.PromptTimezone,
+		&i.LastPromptAt,
+		&i.ExtraAlertChannelIds,
 	)
 	return i, err
 }

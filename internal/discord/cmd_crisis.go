@@ -60,6 +60,9 @@ func runCrisisAnalyze(ctx context.Context, c *Ctx) error {
 		_, _ = c.Store.CreateCrisisEvent(ctx, c.UserID, &details, res.Level == "critical")
 		if res.Respond {
 			c.Bot.syslog.Crisis(ctx, c.UserID, c.GuildID, res.Level, res.Summary)
+			if c.GuildID != nil {
+				c.Bot.alertGuildCrisis(ctx, *c.GuildID, c.UserID, res.Level, "", "")
+			}
 		}
 	}
 

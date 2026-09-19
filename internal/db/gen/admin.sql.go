@@ -10,7 +10,7 @@ import (
 )
 
 const listRecentGuilds = `-- name: ListRecentGuilds :many
-SELECT id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId" FROM "Guild" ORDER BY "joinedAt" DESC LIMIT $1
+SELECT id, name, "ownerId", "joinedAt", "isBanned", "bannedUntil", "banReason", "systemRoleId", "systemChannelId", "systemLogsEnabled", "auditLogChannelId", "modAlertChannelId", "modLogChannelId", "checkInChannelId", "copingToolLogId", "enableCheckIns", "enableGhostLetters", "enableCrisisAlerts", "moderatorRoleId", "autoModEnabled", "autoModLevel", language, "disableContextLogging", "discordId", "promptEnabled", "promptDay", "promptHour", "promptTimezone", "lastPromptAt", "extraAlertChannelIds" FROM "Guild" ORDER BY "joinedAt" DESC LIMIT $1
 `
 
 func (q *Queries) ListRecentGuilds(ctx context.Context, limit int32) ([]Guild, error) {
@@ -47,6 +47,12 @@ func (q *Queries) ListRecentGuilds(ctx context.Context, limit int32) ([]Guild, e
 			&i.Language,
 			&i.DisableContextLogging,
 			&i.DiscordId,
+			&i.PromptEnabled,
+			&i.PromptDay,
+			&i.PromptHour,
+			&i.PromptTimezone,
+			&i.LastPromptAt,
+			&i.ExtraAlertChannelIds,
 		); err != nil {
 			return nil, err
 		}

@@ -130,6 +130,9 @@ func (b *Bot) handleConversationCrisis(ctx context.Context, text string, userID 
 	details := "[" + res.Level + "] bot reply: " + reply
 	_, _ = b.store.CreateCrisisEvent(ctx, userID, &details, res.Level == "critical")
 	b.syslog.Crisis(ctx, userID, guildIDNum, res.Level, res.Summary)
+	if guildIDNum != nil {
+		b.alertGuildCrisis(ctx, *guildIDNum, userID, res.Level, channelID, messageID)
+	}
 
 	var chp, gp, mp *string
 	if channelID != "" {

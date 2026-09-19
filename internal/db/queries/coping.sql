@@ -75,3 +75,8 @@ ORDER BY "tool" ASC;
 
 -- name: RemoveFavoriteCopingTool :execrows
 DELETE FROM "FavoriteCopingTool" WHERE "userId" = $1 AND "tool" = $2;
+
+-- name: RecordCopingToolUsageInGuild :one
+INSERT INTO "CopingToolUsage" ("userId", "toolName", "guildId")
+VALUES ($1, $2, $3)
+RETURNING *;

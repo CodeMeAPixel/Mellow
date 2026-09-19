@@ -22,9 +22,9 @@ func (q *Queries) CountMoodCheckIns(ctx context.Context) (int64, error) {
 }
 
 const createMoodCheckIn = `-- name: CreateMoodCheckIn :one
-INSERT INTO "MoodCheckIn" ("userId", "mood", "intensity", "activity", "note", "nextCheckIn")
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt"
+INSERT INTO "MoodCheckIn" ("userId", "mood", "intensity", "activity", "note", "nextCheckIn", "guildId")
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt", "guildId"
 `
 
 type CreateMoodCheckInParams struct {
@@ -34,6 +34,7 @@ type CreateMoodCheckInParams struct {
 	Activity    *string    `json:"activity"`
 	Note        *string    `json:"note"`
 	NextCheckIn *time.Time `json:"nextCheckIn"`
+	GuildId     *int64     `json:"guildId"`
 }
 
 func (q *Queries) CreateMoodCheckIn(ctx context.Context, arg CreateMoodCheckInParams) (MoodCheckIn, error) {
@@ -44,6 +45,7 @@ func (q *Queries) CreateMoodCheckIn(ctx context.Context, arg CreateMoodCheckInPa
 		arg.Activity,
 		arg.Note,
 		arg.NextCheckIn,
+		arg.GuildId,
 	)
 	var i MoodCheckIn
 	err := row.Scan(
@@ -55,12 +57,13 @@ func (q *Queries) CreateMoodCheckIn(ctx context.Context, arg CreateMoodCheckInPa
 		&i.Note,
 		&i.NextCheckIn,
 		&i.CreatedAt,
+		&i.GuildId,
 	)
 	return i, err
 }
 
 const lastMoodCheckIn = `-- name: LastMoodCheckIn :one
-SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt" FROM "MoodCheckIn"
+SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt", "guildId" FROM "MoodCheckIn"
 WHERE "userId" = $1
 ORDER BY "createdAt" DESC
 LIMIT 1
@@ -78,12 +81,13 @@ func (q *Queries) LastMoodCheckIn(ctx context.Context, userid int64) (MoodCheckI
 		&i.Note,
 		&i.NextCheckIn,
 		&i.CreatedAt,
+		&i.GuildId,
 	)
 	return i, err
 }
 
 const moodCheckInsSince = `-- name: MoodCheckInsSince :many
-SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt" FROM "MoodCheckIn"
+SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt", "guildId" FROM "MoodCheckIn"
 WHERE "userId" = $1 AND "createdAt" >= $2
 ORDER BY "createdAt" ASC
 `
@@ -111,6 +115,7 @@ func (q *Queries) MoodCheckInsSince(ctx context.Context, arg MoodCheckInsSincePa
 			&i.Note,
 			&i.NextCheckIn,
 			&i.CreatedAt,
+			&i.GuildId,
 		); err != nil {
 			return nil, err
 		}
@@ -123,7 +128,7 @@ func (q *Queries) MoodCheckInsSince(ctx context.Context, arg MoodCheckInsSincePa
 }
 
 const recentMoodCheckIns = `-- name: RecentMoodCheckIns :many
-SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt" FROM "MoodCheckIn"
+SELECT id, "userId", mood, intensity, activity, note, "nextCheckIn", "createdAt", "guildId" FROM "MoodCheckIn"
 WHERE "userId" = $1
 ORDER BY "createdAt" DESC
 LIMIT $2
@@ -152,6 +157,7 @@ func (q *Queries) RecentMoodCheckIns(ctx context.Context, arg RecentMoodCheckIns
 			&i.Note,
 			&i.NextCheckIn,
 			&i.CreatedAt,
+			&i.GuildId,
 		); err != nil {
 			return nil, err
 		}
