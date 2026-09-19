@@ -4,6 +4,8 @@ import (
 	"context"
 	"regexp"
 	"strings"
+
+	"github.com/CodeMeAPixel/Mellow/internal/helplines"
 )
 
 type CrisisResult struct {
@@ -14,18 +16,17 @@ type CrisisResult struct {
 	Summary      string
 }
 
-const CrisisResourceBlock = "**If you are in immediate danger, call your local emergency number now.**\n\n" +
-	"- US: call or text **988** (Suicide & Crisis Lifeline), available 24/7\n" +
-	"- US: text **HOME** to **741741** (Crisis Text Line)\n" +
-	"- Anywhere: find a local helpline at **https://findahelpline.com** or **https://www.iasp.info/resources/Crisis_Centres/**\n\n" +
-	"You can also reach out to someone you trust, or go to your nearest emergency room. " +
-	"I'm an AI and not a substitute for a person or professional, but you deserve real support and it is available."
+const CrisisResourceBlock = helplines.DefaultBlock
 
-const criticalCrisisMessage = "I'm really concerned about what you've shared, and I want you to be safe. " +
-	"Please talk to someone who can help right now.\n\n" + CrisisResourceBlock
+const criticalLead = "I'm really concerned about what you've shared, and I want you to be safe. " +
+	"Please talk to someone who can help right now."
 
-const mediumCrisisFallback = "I hear how much pain you're in, and I'm glad you said something. " +
-	"You don't have to carry this alone.\n\n" + CrisisResourceBlock
+const criticalCrisisMessage = criticalLead + "\n\n" + CrisisResourceBlock
+
+const mediumLead = "I hear how much pain you're in, and I'm glad you said something. " +
+	"You don't have to carry this alone."
+
+const mediumCrisisFallback = mediumLead + "\n\n" + CrisisResourceBlock
 
 var selfHarmDirect = []string{
 	"kill myself", "end my life", "want to die", "suicide", "suicidal", "self harm",
@@ -183,25 +184,39 @@ const crisisLeadInSystem = "You are Mellow, a mental health companion. The user 
 	"Do NOT roleplay. Just acknowledge, then stop."
 
 func (c *Client) CrisisResponse(ctx context.Context, level, userMessage string) string {
+	return c.CrisisResponseFor(ctx, level, userMessage, CrisisResourceBlock)
+}
+
+func (c *Client) CrisisResponseFor(ctx context.Context, level, userMessage, block string) string {
+	if block == "" {
+		block = CrisisResourceBlock
+	}
 	if levelRank[level] >= levelRank["high"] {
-		return criticalCrisisMessage
+		return criticalLead + "\n\n" + block
 	}
 
 	if !c.live {
-		return mediumCrisisFallback
+		return mediumLead + "\n\n" + block
 	}
 	lead, err := c.constrainedOneShot(ctx, crisisLeadInSystem, userMessage)
 	lead = strings.TrimSpace(lead)
 	if err != nil || lead == "" || len(lead) > 400 || containsMethodContent(lead) {
-		return mediumCrisisFallback
+		return mediumLead + "\n\n" + block
 	}
-	return lead + "\n\n" + CrisisResourceBlock
+	return lead + "\n\n" + block
 }
 
 const crisisResourcesIntroSystem = "You are Mellow, a mental health companion. Write TWO short, warm sentences telling the user support is available and they deserve it. " +
 	"Do NOT list hotlines or numbers yourself. Do NOT give methods or step-by-step advice. Do NOT ask questions. Keep it under 50 words."
 
 func (c *Client) CrisisResourcesText(ctx context.Context, situation string) string {
+	return c.CrisisResourcesTextFor(ctx, situation, CrisisResourceBlock)
+}
+
+func (c *Client) CrisisResourcesTextFor(ctx context.Context, situation, block string) string {
+	if block == "" {
+		block = CrisisResourceBlock
+	}
 	intro := "You reached out, and that matters. Support is available and you deserve it."
 	if c.live {
 		if out, err := c.constrainedOneShot(ctx, crisisResourcesIntroSystem, situation); err == nil {
@@ -211,5 +226,5 @@ func (c *Client) CrisisResourcesText(ctx context.Context, situation string) stri
 			}
 		}
 	}
-	return intro + "\n\n" + CrisisResourceBlock
+	return intro + "\n\n" + block
 }

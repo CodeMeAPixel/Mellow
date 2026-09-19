@@ -145,23 +145,25 @@ const updateUserPreferences = `-- name: UpdateUserPreferences :one
 UPDATE "UserPreferences" SET
     "aiPersonality"           = COALESCE($2, "aiPersonality"),
     "timezone"                = COALESCE($3, "timezone"),
-    "language"                = COALESCE($4, "language"),
-    "reminderMethod"          = COALESCE($5, "reminderMethod"),
-    "profileTheme"            = COALESCE($6, "profileTheme"),
-    "checkInInterval"         = COALESCE($7, "checkInInterval"),
-    "remindersEnabled"        = COALESCE($8, "remindersEnabled"),
-    "journalPrivacy"          = COALESCE($9, "journalPrivacy"),
-    "disableContextLogging"   = COALESCE($10, "disableContextLogging"),
-    "disableCrisisDetection"  = COALESCE($11, "disableCrisisDetection"),
-    "disableCrisisSupportDMs" = COALESCE($12, "disableCrisisSupportDMs")
+    "country"                 = COALESCE($4, "country"),
+    "language"                = COALESCE($5, "language"),
+    "reminderMethod"          = COALESCE($6, "reminderMethod"),
+    "profileTheme"            = COALESCE($7, "profileTheme"),
+    "checkInInterval"         = COALESCE($8, "checkInInterval"),
+    "remindersEnabled"        = COALESCE($9, "remindersEnabled"),
+    "journalPrivacy"          = COALESCE($10, "journalPrivacy"),
+    "disableContextLogging"   = COALESCE($11, "disableContextLogging"),
+    "disableCrisisDetection"  = COALESCE($12, "disableCrisisDetection"),
+    "disableCrisisSupportDMs" = COALESCE($13, "disableCrisisSupportDMs")
 WHERE "id" = $1
-RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt"
+RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country
 `
 
 type UpdateUserPreferencesParams struct {
 	ID                      int64   `json:"id"`
 	AiPersonality           *string `json:"ai_personality"`
 	Timezone                *string `json:"timezone"`
+	Country                 *string `json:"country"`
 	Language                *string `json:"language"`
 	ReminderMethod          *string `json:"reminder_method"`
 	ProfileTheme            *string `json:"profile_theme"`
@@ -178,6 +180,7 @@ func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPrefe
 		arg.ID,
 		arg.AiPersonality,
 		arg.Timezone,
+		arg.Country,
 		arg.Language,
 		arg.ReminderMethod,
 		arg.ProfileTheme,
@@ -206,6 +209,7 @@ func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPrefe
 		&i.DisableCrisisSupportDMs,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Country,
 	)
 	return i, err
 }

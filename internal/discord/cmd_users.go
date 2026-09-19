@@ -8,8 +8,18 @@ import (
 
 	"github.com/CodeMeAPixel/Mellow/internal/db"
 	"github.com/CodeMeAPixel/Mellow/internal/db/gen"
+	"github.com/CodeMeAPixel/Mellow/internal/helplines"
 	"github.com/disgoorg/disgo/discord"
 )
+
+func countryChoices() []discord.ApplicationCommandOptionChoiceString {
+	cs := helplines.Countries()
+	out := make([]discord.ApplicationCommandOptionChoiceString, 0, len(cs)+1)
+	for _, c := range cs {
+		out = append(out, discord.ApplicationCommandOptionChoiceString{Name: c.Name, Value: c.Code})
+	}
+	return append(out, discord.ApplicationCommandOptionChoiceString{Name: "Not listed / clear", Value: "none"})
+}
 
 var personalityChoices = []discord.ApplicationCommandOptionChoiceString{
 	{Name: "Gentle", Value: "gentle"},
@@ -32,6 +42,7 @@ func userCommands() []*Command {
 					Options: []discord.ApplicationCommandOption{
 						discord.ApplicationCommandOptionString{Name: "personality", Description: "AI personality", Choices: personalityChoices},
 						discord.ApplicationCommandOptionString{Name: "timezone", Description: "IANA timezone, e.g. Europe/London"},
+						discord.ApplicationCommandOptionString{Name: "country", Description: "Your country, so crisis resources match where you are", Choices: countryChoices()},
 						discord.ApplicationCommandOptionInt{Name: "checkin_interval", Description: "Minutes between check-in reminders"},
 						discord.ApplicationCommandOptionBool{Name: "reminders", Description: "Enable check-in reminders"},
 						discord.ApplicationCommandOptionBool{Name: "context_logging", Description: "Allow logging messages for AI context"},
@@ -112,6 +123,13 @@ func runPreferences(ctx context.Context, c *Ctx) error {
 			return c.ReplyEphemeral("That does not look like a valid IANA timezone.")
 		}
 		upd.Timezone = &v
+		changed = true
+	}
+	if v := c.String("country"); v != "" {
+		if v == "none" {
+			v = ""
+		}
+		upd.Country = &v
 		changed = true
 	}
 	if v, ok := c.Int("checkin_interval"); ok {
@@ -237,6 +255,11 @@ func renderPrefs(p gen.UserPreferences) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "AI personality: **%s**\n", deref(p.AiPersonality, "gentle"))
 	fmt.Fprintf(&b, "Timezone: **%s**\n", deref(p.Timezone, "not set"))
+	country := "not set"
+	if c, ok := helplines.Lookup(deref(p.Country, "")); ok {
+		country = c.Name
+	}
+	fmt.Fprintf(&b, "Country (for crisis resources): **%s**\n", country)
 	fmt.Fprintf(&b, "Check-in interval: **%d min**\n", p.CheckInInterval)
 	fmt.Fprintf(&b, "Reminders: **%s** (%s)\n", onOff(p.RemindersEnabled), deref(p.ReminderMethod, "dm"))
 	fmt.Fprintf(&b, "Context logging: **%s**\n", onOff(!p.DisableContextLogging))

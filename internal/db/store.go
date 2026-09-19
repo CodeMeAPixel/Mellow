@@ -499,6 +499,7 @@ func (s *Store) CreateSystemLog(ctx context.Context, in NewSystemLog) error {
 type PrefsUpdate struct {
 	AIPersonality           *string
 	Timezone                *string
+	Country                 *string
 	Language                *string
 	ReminderMethod          *string
 	CheckInInterval         *int32
@@ -517,6 +518,7 @@ func (s *Store) UpdateUserPreferences(ctx context.Context, userID int64, in Pref
 		ID:                      userID,
 		AiPersonality:           in.AIPersonality,
 		Timezone:                in.Timezone,
+		Country:                 in.Country,
 		Language:                in.Language,
 		ReminderMethod:          in.ReminderMethod,
 		CheckInInterval:         in.CheckInInterval,

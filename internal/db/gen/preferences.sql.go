@@ -11,7 +11,7 @@ import (
 )
 
 const dueForReminder = `-- name: DueForReminder :many
-SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt" FROM "UserPreferences"
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country FROM "UserPreferences"
 WHERE "remindersEnabled" = true
   AND "nextCheckIn" IS NOT NULL
   AND "nextCheckIn" <= now()
@@ -43,6 +43,7 @@ func (q *Queries) DueForReminder(ctx context.Context) ([]UserPreferences, error)
 			&i.DisableCrisisSupportDMs,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Country,
 		); err != nil {
 			return nil, err
 		}
@@ -58,7 +59,7 @@ const ensureUserPreferences = `-- name: EnsureUserPreferences :one
 INSERT INTO "UserPreferences" ("id")
 VALUES ($1)
 ON CONFLICT ("id") DO UPDATE SET "id" = "UserPreferences"."id"
-RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt"
+RETURNING id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country
 `
 
 func (q *Queries) EnsureUserPreferences(ctx context.Context, id int64) (UserPreferences, error) {
@@ -81,12 +82,13 @@ func (q *Queries) EnsureUserPreferences(ctx context.Context, id int64) (UserPref
 		&i.DisableCrisisSupportDMs,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Country,
 	)
 	return i, err
 }
 
 const getUserPreferences = `-- name: GetUserPreferences :one
-SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt" FROM "UserPreferences" WHERE "id" = $1
+SELECT id, "checkInInterval", "lastReminder", "nextCheckIn", "remindersEnabled", "reminderMethod", "journalPrivacy", "aiPersonality", "profileTheme", language, timezone, "disableContextLogging", "disableCrisisDetection", "disableCrisisSupportDMs", "createdAt", "updatedAt", country FROM "UserPreferences" WHERE "id" = $1
 `
 
 func (q *Queries) GetUserPreferences(ctx context.Context, id int64) (UserPreferences, error) {
@@ -109,6 +111,7 @@ func (q *Queries) GetUserPreferences(ctx context.Context, id int64) (UserPrefere
 		&i.DisableCrisisSupportDMs,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Country,
 	)
 	return i, err
 }

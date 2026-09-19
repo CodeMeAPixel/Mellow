@@ -200,6 +200,12 @@ type ReportReply struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type SafetyPlan struct {
+	UserId    int64     `json:"userId"`
+	Data      string    `json:"data"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type SystemLog struct {
 	ID          int32     `json:"id"`
 	GuildId     *int64    `json:"guildId"`
@@ -240,6 +246,7 @@ type UserPreferences struct {
 	DisableCrisisSupportDMs bool       `json:"disableCrisisSupportDMs"`
 	CreatedAt               time.Time  `json:"createdAt"`
 	UpdatedAt               time.Time  `json:"updatedAt"`
+	Country                 *string    `json:"country"`
 }
 
 type WebSession struct {

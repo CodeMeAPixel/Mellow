@@ -111,7 +111,7 @@ func (b *Bot) handleConversationCrisis(ctx context.Context, text string, userID 
 		return "", false
 	}
 
-	reply := b.ai.CrisisResponse(ctx, res.Level, text)
+	reply := b.ai.CrisisResponseFor(ctx, res.Level, text, b.resourceBlock(ctx, userID))
 	details := "[" + res.Level + "] bot reply: " + reply
 	_, _ = b.store.CreateCrisisEvent(ctx, userID, &details, res.Level == "critical")
 	b.syslog.Crisis(ctx, userID, guildIDNum, res.Level, res.Summary)
@@ -162,7 +162,7 @@ func (b *Bot) handleCheckMessage(ctx context.Context, e *events.ApplicationComma
 
 	body := describeCrisis(res)
 	if res.NeedsSupport {
-		body += "\n\n" + ai.CrisisResourceBlock
+		body += "\n\n" + b.resourceBlock(ctx, userID)
 	}
 	emb := infoEmbed("Message check", body)
 	_, _ = e.Client().Rest.CreateFollowupMessage(e.ApplicationID(), e.Token(), discord.MessageCreate{

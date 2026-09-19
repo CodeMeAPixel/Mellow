@@ -1,0 +1,7 @@
+ALTER TABLE "UserPreferences" ADD COLUMN IF NOT EXISTS "country" TEXT;
+
+CREATE TABLE IF NOT EXISTS "SafetyPlan" (
+    "userId"    BIGINT PRIMARY KEY REFERENCES "User" ("id"),
+    "data"      TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -2,6 +2,7 @@
 UPDATE "UserPreferences" SET
     "aiPersonality"           = COALESCE(sqlc.narg('ai_personality'), "aiPersonality"),
     "timezone"                = COALESCE(sqlc.narg('timezone'), "timezone"),
+    "country"                 = COALESCE(sqlc.narg('country'), "country"),
     "language"                = COALESCE(sqlc.narg('language'), "language"),
     "reminderMethod"          = COALESCE(sqlc.narg('reminder_method'), "reminderMethod"),
     "profileTheme"            = COALESCE(sqlc.narg('profile_theme'), "profileTheme"),

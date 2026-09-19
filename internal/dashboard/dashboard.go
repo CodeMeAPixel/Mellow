@@ -20,6 +20,8 @@ import (
 	"github.com/CodeMeAPixel/Mellow/internal/billing"
 	"github.com/CodeMeAPixel/Mellow/internal/config"
 	"github.com/CodeMeAPixel/Mellow/internal/db"
+	"github.com/CodeMeAPixel/Mellow/internal/db/gen"
+	"github.com/CodeMeAPixel/Mellow/internal/helplines"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -103,6 +105,11 @@ func (s *Service) Mount(r chi.Router) {
 			r.Get("/me", s.handleMe)
 			r.Get("/me/preferences", s.handleGetPrefs)
 			r.Patch("/me/preferences", s.handlePatchPrefs)
+			r.Get("/me/safety-plan", s.handleGetSafetyPlan)
+			r.Put("/me/safety-plan", s.handlePutSafetyPlan)
+			r.Get("/me/mood", s.handleMood)
+			r.Get("/me/export", s.handleExport)
+			r.Post("/me/delete", s.handleDeleteData)
 			r.Get("/me/guilds", s.handleMyGuilds)
 			r.Get("/guilds/{id}", s.handleGetGuild)
 			r.Patch("/guilds/{id}", s.handlePatchGuild)
@@ -153,7 +160,7 @@ func (s *Service) cors(public bool) func(http.Handler) http.Handler {
 				h.Set("Access-Control-Allow-Credentials", "true")
 			}
 			if r.Method == http.MethodOptions {
-				h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+				h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, OPTIONS")
 				h.Set("Access-Control-Allow-Headers", "Content-Type")
 				h.Set("Access-Control-Max-Age", "600")
 				w.WriteHeader(http.StatusNoContent)
@@ -433,7 +440,7 @@ func (s *Service) storeURL() string {
 		return s.cfg.PlusStoreURL
 	}
 	if s.billing != nil && s.billing.Enabled() {
-		return fmt.Sprintf("https://discord.com/application-directory/%s/store/%d", s.cfg.ClientID, s.billing.PlusSKU())
+		return fmt.Sprintf("https://discord.com/discovery/applications/%s/store/%d", s.cfg.ClientID, s.billing.PlusSKU())
 	}
 	return ""
 }
@@ -475,6 +482,7 @@ var personalities = []string{"gentle", "supportive", "direct", "playful", "profe
 type prefsDTO struct {
 	AIPersonality           string `json:"aiPersonality"`
 	Timezone                string `json:"timezone"`
+	Country                 string `json:"country"`
 	Language                string `json:"language"`
 	CheckInInterval         int32  `json:"checkInInterval"`
 	RemindersEnabled        bool   `json:"remindersEnabled"`
@@ -491,23 +499,18 @@ func deref(p *string, def string) string {
 	return *p
 }
 
-type prefsRow struct {
-	personality, tz, lang                      *string
-	interval                                   int32
-	reminders, journal, noCtx, noCrisis, noDMs bool
-}
-
-func (p prefsRow) dto() prefsDTO {
+func prefsToDTO(p gen.UserPreferences) prefsDTO {
 	return prefsDTO{
-		AIPersonality:           deref(p.personality, "gentle"),
-		Timezone:                deref(p.tz, ""),
-		Language:                deref(p.lang, "en"),
-		CheckInInterval:         p.interval,
-		RemindersEnabled:        p.reminders,
-		JournalPrivacy:          p.journal,
-		DisableContextLogging:   p.noCtx,
-		DisableCrisisDetection:  p.noCrisis,
-		DisableCrisisSupportDMs: p.noDMs,
+		AIPersonality:           deref(p.AiPersonality, "gentle"),
+		Timezone:                deref(p.Timezone, ""),
+		Country:                 deref(p.Country, ""),
+		Language:                deref(p.Language, "en"),
+		CheckInInterval:         p.CheckInInterval,
+		RemindersEnabled:        p.RemindersEnabled,
+		JournalPrivacy:          p.JournalPrivacy,
+		DisableContextLogging:   p.DisableContextLogging,
+		DisableCrisisDetection:  p.DisableCrisisDetection,
+		DisableCrisisSupportDMs: p.DisableCrisisSupportDMs,
 	}
 }
 
@@ -517,13 +520,17 @@ func (s *Service) handleGetPrefs(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "could not load preferences")
 		return
 	}
-	row := prefsRow{p.AiPersonality, p.Timezone, p.Language, p.CheckInInterval, p.RemindersEnabled, p.JournalPrivacy, p.DisableContextLogging, p.DisableCrisisDetection, p.DisableCrisisSupportDMs}
-	writeJSON(w, http.StatusOK, map[string]any{"preferences": row.dto(), "personalities": personalities})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"preferences":   prefsToDTO(p),
+		"personalities": personalities,
+		"countries":     helplines.Countries(),
+	})
 }
 
 type prefsPatch struct {
 	AIPersonality           *string `json:"aiPersonality"`
 	Timezone                *string `json:"timezone"`
+	Country                 *string `json:"country"`
 	Language                *string `json:"language"`
 	CheckInInterval         *int32  `json:"checkInInterval"`
 	RemindersEnabled        *bool   `json:"remindersEnabled"`
@@ -563,6 +570,14 @@ func (s *Service) handlePatchPrefs(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid language code")
 		return
 	}
+	if in.Country != nil && *in.Country != "" {
+		c, ok := helplines.Lookup(*in.Country)
+		if !ok {
+			writeErr(w, http.StatusBadRequest, "unsupported country")
+			return
+		}
+		in.Country = &c.Code
+	}
 	if in.CheckInInterval != nil && (*in.CheckInInterval < 30 || *in.CheckInInterval > 10080) {
 		writeErr(w, http.StatusBadRequest, "check-in interval must be between 30 and 10080 minutes")
 		return
@@ -571,6 +586,7 @@ func (s *Service) handlePatchPrefs(w http.ResponseWriter, r *http.Request) {
 	p, err := s.store.UpdateUserPreferences(r.Context(), sess(r).UserID, db.PrefsUpdate{
 		AIPersonality:           in.AIPersonality,
 		Timezone:                in.Timezone,
+		Country:                 in.Country,
 		Language:                in.Language,
 		CheckInInterval:         in.CheckInInterval,
 		RemindersEnabled:        in.RemindersEnabled,
@@ -583,8 +599,7 @@ func (s *Service) handlePatchPrefs(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "could not save preferences")
 		return
 	}
-	row := prefsRow{p.AiPersonality, p.Timezone, p.Language, p.CheckInInterval, p.RemindersEnabled, p.JournalPrivacy, p.DisableContextLogging, p.DisableCrisisDetection, p.DisableCrisisSupportDMs}
-	writeJSON(w, http.StatusOK, map[string]any{"preferences": row.dto()})
+	writeJSON(w, http.StatusOK, map[string]any{"preferences": prefsToDTO(p)})
 }
 
 func (s *Service) handleMyGuilds(w http.ResponseWriter, r *http.Request) {

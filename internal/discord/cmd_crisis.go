@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CodeMeAPixel/Mellow/internal/ai"
 	"github.com/disgoorg/disgo/discord"
 )
 
@@ -66,7 +65,7 @@ func runCrisisAnalyze(ctx context.Context, c *Ctx) error {
 
 	body := describeCrisis(res)
 	if res.NeedsSupport {
-		body += "\n\n" + ai.CrisisResourceBlock
+		body += "\n\n" + c.Bot.resourceBlock(ctx, c.UserID)
 	}
 	emb := infoEmbed("Crisis analysis", body)
 	switch res.Level {
@@ -81,7 +80,11 @@ func runCrisisAnalyze(ctx context.Context, c *Ctx) error {
 func runCrisisResources(ctx context.Context, c *Ctx) error {
 	situation := c.String("situation")
 	_ = c.Defer(true)
-	return c.Reply(infoEmbed("Crisis support resources", c.AI.CrisisResourcesText(ctx, situation)).WithColor(colorWarning))
+	body := c.AI.CrisisResourcesTextFor(ctx, situation, c.Bot.resourceBlock(ctx, c.UserID))
+	if plan := c.Bot.safetyPlanText(ctx, c.UserID); plan != "" {
+		body += "\n\n**Your safety plan**\n\n" + plan
+	}
+	return c.Reply(infoEmbed("Crisis support resources", body).WithColor(colorWarning))
 }
 
 func runCrisisHistory(ctx context.Context, c *Ctx) error {
