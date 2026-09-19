@@ -15,10 +15,10 @@ func TestWebsiteDefaultsAndDerivation(t *testing.T) {
 	if c.WebsiteURL != "https://mymellow.xyz" {
 		t.Errorf("website = %q", c.WebsiteURL)
 	}
-	if c.DocsURL != "https://mymellow.xyz/docs" {
+	if c.DocsURL != "https://docs.mymellow.xyz" {
 		t.Errorf("docs = %q", c.DocsURL)
 	}
-	if c.SupportURL != "https://mymellow.xyz/support" {
+	if c.SupportURL != "https://discord.gg/cYauqJfnNK" {
 		t.Errorf("support = %q", c.SupportURL)
 	}
 	if c.InviteURL != "https://mymellow.xyz/invite" {
@@ -40,7 +40,7 @@ func TestWebsiteExplicitOverrides(t *testing.T) {
 	if c.DocsURL != "https://docs.example.test" {
 		t.Errorf("docs override = %q", c.DocsURL)
 	}
-	if c.SupportURL != "https://example.test/support" {
+	if c.SupportURL != "https://discord.gg/cYauqJfnNK" {
 		t.Errorf("support = %q", c.SupportURL)
 	}
 }

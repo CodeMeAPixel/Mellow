@@ -50,7 +50,11 @@ type Config struct {
 	PlusStoreURL        string
 }
 
-const defaultWebsite = "https://mymellow.xyz"
+const (
+	defaultWebsite = "https://mymellow.xyz"
+	defaultDocs    = "https://docs.mymellow.xyz"
+	defaultSupport = "https://discord.gg/cYauqJfnNK"
+)
 
 func Load() (*Config, error) {
 	c := &Config{
@@ -94,8 +98,8 @@ func Load() (*Config, error) {
 	}
 
 	c.WebsiteURL = strings.TrimRight(firstNonEmpty(os.Getenv("WEBSITE_URL"), defaultWebsite), "/")
-	c.DocsURL = firstNonEmpty(os.Getenv("DOCS_URL"), c.WebsiteURL+"/docs")
-	c.SupportURL = firstNonEmpty(os.Getenv("SUPPORT_URL"), c.WebsiteURL+"/support")
+	c.DocsURL = firstNonEmpty(os.Getenv("DOCS_URL"), defaultDocs)
+	c.SupportURL = firstNonEmpty(os.Getenv("SUPPORT_URL"), defaultSupport)
 	c.InviteURL = firstNonEmpty(os.Getenv("INVITE_URL"), c.WebsiteURL+"/invite")
 	c.SourceURL = firstNonEmpty(os.Getenv("SOURCE_URL"), "https://github.com/CodeMeAPixel/Mellow")
 	c.StatusAPIURL = firstNonEmpty(os.Getenv("STATUS_API_URL"), c.WebsiteURL+"/api/status")
