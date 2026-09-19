@@ -99,6 +99,7 @@ func (s *Service) Mount(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(s.cors(false))
 		r.Use(s.originGuard)
+		r.Options("/*", func(http.ResponseWriter, *http.Request) {})
 		r.Post("/auth/logout", s.handleLogout)
 
 		r.Group(func(r chi.Router) {
@@ -158,7 +159,7 @@ func (s *Service) cors(public bool) func(http.Handler) http.Handler {
 			case public:
 				h.Set("Access-Control-Allow-Origin", "*")
 			case s.allowedOrigin(origin):
-				h.Set("Access-Control-Allow-Origin", origin)
+				h.Set("Access-Control-Allow-Origin", "*")
 				h.Set("Access-Control-Allow-Credentials", "true")
 			}
 			if r.Method == http.MethodOptions {
