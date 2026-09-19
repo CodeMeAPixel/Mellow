@@ -46,6 +46,7 @@ type Config struct {
 	DashboardURL        string
 	AllowedOrigins      []string
 	CookieDomain        string
+	CookieSameSite      string
 	PlusStoreURL        string
 }
 
@@ -111,6 +112,7 @@ func Load() (*Config, error) {
 	c.DashboardURL = strings.TrimRight(firstNonEmpty(os.Getenv("DASHBOARD_URL"), c.WebsiteURL+"/dashboard"), "/")
 	c.AllowedOrigins = append([]string{c.WebsiteURL}, splitCSV(os.Getenv("ALLOWED_ORIGINS"))...)
 	c.CookieDomain = os.Getenv("COOKIE_DOMAIN")
+	c.CookieSameSite = strings.ToLower(firstNonEmpty(os.Getenv("COOKIE_SAMESITE"), "lax"))
 	c.PlusStoreURL = os.Getenv("PLUS_STORE_URL")
 
 	return c, nil

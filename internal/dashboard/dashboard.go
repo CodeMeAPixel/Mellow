@@ -109,6 +109,9 @@ func (s *Service) Mount(r chi.Router) {
 		})
 	})
 
+	if s.cfg.CookieSameSite == "none" {
+		slog.Warn("COOKIE_SAMESITE=none: session cookies are sent cross-site, use only on a dev API")
+	}
 	go s.sweepSessions()
 }
 
@@ -190,6 +193,16 @@ func randomToken(n int) (string, error) {
 
 func (s *Service) secure() bool { return strings.HasPrefix(s.cfg.APIPublicURL, "https://") }
 
+func (s *Service) sameSite() http.SameSite {
+	switch s.cfg.CookieSameSite {
+	case "none":
+		return http.SameSiteNoneMode
+	case "strict":
+		return http.SameSiteStrictMode
+	}
+	return http.SameSiteLaxMode
+}
+
 func (s *Service) setCookie(w http.ResponseWriter, name, value, path string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -198,8 +211,8 @@ func (s *Service) setCookie(w http.ResponseWriter, name, value, path string, max
 		Domain:   s.cfg.CookieDomain,
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		Secure:   s.secure(),
-		SameSite: http.SameSiteLaxMode,
+		Secure:   s.secure() || s.cfg.CookieSameSite == "none",
+		SameSite: s.sameSite(),
 	})
 }
 
